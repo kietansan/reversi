@@ -1,29 +1,43 @@
 // =====================
 // cpu3.js
-// 高度リバーシAI
+// High Strength Reversi AI
+// =====================
 //
 // 機能:
-// - Minimax
-// - Alpha Beta
+// - Bitboard
+// - Negamax
+// - AlphaBeta
+// - Iterative Deepening
+// - PVS
+// - Move Ordering
 // - Mobility
 // - Corner
 // - Stable風評価
-// - X/C回避
-// - 終盤探索強化
+// - Frontier
+// - Endgame強化
 //
 // 入力:
-// board
+// board[y][x]
 //
 // 出力:
 // [x,y]
+//
+// 空=0
+// 黒=1
+// 白=2
+//
+// CPU = 白
 // =====================
 
 function cpuMove3(board){
 
-  const SIZE = 8;
   const EMPTY = 0;
   const BLACK = 1;
   const WHITE = 2;
+
+  const SIZE = 8;
+
+  const INF = 99999999;
 
   const dirs = [
     [-1,-1],[-1,0],[-1,1],
@@ -31,7 +45,12 @@ function cpuMove3(board){
     [1,-1],[1,0],[1,1]
   ];
 
-  const evalBoard = [
+  // =====================
+  // 評価盤
+  // =====================
+
+  const PST = [
+
     [120,-20, 20,  5,  5, 20,-20,120],
     [-20,-40, -5, -5, -5, -5,-40,-20],
     [ 20, -5, 15,  3,  3, 15, -5, 20],
@@ -40,29 +59,68 @@ function cpuMove3(board){
     [ 20, -5, 15,  3,  3, 15, -5, 20],
     [-20,-40, -5, -5, -5, -5,-40,-20],
     [120,-20, 20,  5,  5, 20,-20,120]
+
   ];
 
+  // =====================
+  // 盤面コピー
+  // =====================
+
   function cloneBoard(src){
-    return src.map(row => [...row]);
+
+    const b = new Array(8);
+
+    for(let y=0;y<8;y++){
+
+      b[y] = src[y].slice();
+    }
+
+    return b;
   }
+
+  // =====================
+  // 範囲
+  // =====================
 
   function inRange(x,y){
-    return x>=0 && x<SIZE && y>=0 && y<SIZE;
+
+    return (
+      x >= 0 &&
+      x < 8 &&
+      y >= 0 &&
+      y < 8
+    );
   }
 
-  function opponent(player){
-    return player === BLACK ? WHITE : BLACK;
+  // =====================
+  // 相手
+  // =====================
+
+  function opp(p){
+
+    return p === BLACK
+      ? WHITE
+      : BLACK;
   }
+
+  // =====================
+  // 反転取得
+  // =====================
 
   function getFlips(state,x,y,player){
 
-    if(state[y][x] !== EMPTY) return [];
+    if(state[y][x] !== EMPTY){
+      return null;
+    }
 
-    const enemy = opponent(player);
+    const enemy = opp(player);
 
     let flips = [];
 
-    for(const [dx,dy] of dirs){
+    for(let i=0;i<8;i++){
+
+      const dx = dirs[i][0];
+      const dy = dirs[i][1];
 
       let nx = x + dx;
       let ny = y + dy;
@@ -73,6 +131,7 @@ function cpuMove3(board){
         inRange(nx,ny) &&
         state[ny][nx] === enemy
       ){
+
         line.push([nx,ny]);
 
         nx += dx;
@@ -80,28 +139,41 @@ function cpuMove3(board){
       }
 
       if(
+        line.length &&
         inRange(nx,ny) &&
-        state[ny][nx] === player &&
-        line.length > 0
+        state[ny][nx] === player
       ){
+
         flips = flips.concat(line);
       }
     }
 
-    return flips;
+    return flips.length
+      ? flips
+      : null;
   }
 
-  function getMoves(state,player){
+  // =====================
+  // 合法手
+  // =====================
+
+  function generateMoves(state,player){
 
     let moves = [];
 
-    for(let y=0;y<SIZE;y++){
-      for(let x=0;x<SIZE;x++){
+    for(let y=0;y<8;y++){
+      for(let x=0;x<8;x++){
 
-        const flips = getFlips(state,x,y,player);
+        const flips =
+          getFlips(state,x,y,player);
 
-        if(flips.length > 0){
-          moves.push({ x,y,flips });
+        if(flips){
+
+          moves.push({
+            x,
+            y,
+            flips
+          });
         }
       }
     }
@@ -109,220 +181,54 @@ function cpuMove3(board){
     return moves;
   }
 
-  function applyMove(state,move,player){
+  // =====================
+  // 着手
+  // =====================
 
-    const newBoard = cloneBoard(state);
+  function doMove(state,move,player){
 
-    newBoard[move.y][move.x] = player;
+    state[move.y][move.x] = player;
 
-    for(const [fx,fy] of move.flips){
-      newBoard[fy][fx] = player;
+    const flips = move.flips;
+
+    for(let i=0;i<flips.length;i++){
+
+      const f = flips[i];
+
+      state[f[1]][f[0]] = player;
     }
-
-    return newBoard;
   }
 
-  function countPieces(state){
+  // =====================
+  // Undo
+  // =====================
 
-    let black = 0;
-    let white = 0;
+  function undoMove(state,move,player){
 
-    for(let y=0;y<SIZE;y++){
-      for(let x=0;x<SIZE;x++){
+    state[move.y][move.x] = EMPTY;
 
-        if(state[y][x] === BLACK) black++;
-        if(state[y][x] === WHITE) white++;
-      }
+    const enemy = opp(player);
+
+    const flips = move.flips;
+
+    for(let i=0;i<flips.length;i++){
+
+      const f = flips[i];
+
+      state[f[1]][f[0]] = enemy;
     }
-
-    return { black, white };
   }
 
-  function cornerScore(state){
-
-    const corners = [
-      [0,0],
-      [0,7],
-      [7,0],
-      [7,7]
-    ];
-
-    let score = 0;
-
-    for(const [x,y] of corners){
-
-      if(state[y][x] === WHITE) score += 100;
-      if(state[y][x] === BLACK) score -= 100;
-    }
-
-    return score;
-  }
-
-  function mobilityScore(state){
-
-    const myMoves = getMoves(state,WHITE).length;
-    const enemyMoves = getMoves(state,BLACK).length;
-
-    return (myMoves - enemyMoves) * 12;
-  }
-
-  function boardScore(state){
-
-    let score = 0;
-
-    for(let y=0;y<SIZE;y++){
-      for(let x=0;x<SIZE;x++){
-
-        if(state[y][x] === WHITE){
-          score += evalBoard[y][x];
-        }
-
-        if(state[y][x] === BLACK){
-          score -= evalBoard[y][x];
-        }
-      }
-    }
-
-    return score;
-  }
-
-  function frontierScore(state){
-
-    let whiteFront = 0;
-    let blackFront = 0;
-
-    for(let y=0;y<SIZE;y++){
-      for(let x=0;x<SIZE;x++){
-
-        const p = state[y][x];
-
-        if(p === EMPTY) continue;
-
-        let frontier = false;
-
-        for(const [dx,dy] of dirs){
-
-          const nx = x + dx;
-          const ny = y + dy;
-
-          if(
-            inRange(nx,ny) &&
-            state[ny][nx] === EMPTY
-          ){
-            frontier = true;
-            break;
-          }
-        }
-
-        if(frontier){
-
-          if(p === WHITE) whiteFront++;
-          else blackFront++;
-        }
-      }
-    }
-
-    return (blackFront - whiteFront) * 4;
-  }
-
-  function parityScore(state){
-
-    let empty = 0;
-
-    for(let y=0;y<SIZE;y++){
-      for(let x=0;x<SIZE;x++){
-
-        if(state[y][x] === EMPTY){
-          empty++;
-        }
-      }
-    }
-
-    if(empty % 2 === 0){
-      return 8;
-    }
-
-    return -8;
-  }
-
-  function stableEdgeScore(state){
-
-    let score = 0;
-
-    for(let x=0;x<SIZE;x++){
-
-      if(state[0][x] === WHITE) score += 6;
-      if(state[0][x] === BLACK) score -= 6;
-
-      if(state[7][x] === WHITE) score += 6;
-      if(state[7][x] === BLACK) score -= 6;
-    }
-
-    for(let y=0;y<SIZE;y++){
-
-      if(state[y][0] === WHITE) score += 6;
-      if(state[y][0] === BLACK) score -= 6;
-
-      if(state[y][7] === WHITE) score += 6;
-      if(state[y][7] === BLACK) score -= 6;
-    }
-
-    return score;
-  }
-
-  function pieceScore(state){
-
-    const { black, white } = countPieces(state);
-
-    return white - black;
-  }
-
-  function evaluate(state){
-
-    // =====================
-    // 終局評価
-    // =====================
-
-    if(isGameOver(state)){
-
-      const { black, white } = countPieces(state);
-
-      if(white > black){
-        return 999999;
-      }
-
-      if(black > white){
-        return -999999;
-      }
-
-      return 0;
-    }
-
-    return (
-      boardScore(state) +
-      cornerScore(state) +
-      mobilityScore(state) +
-      frontierScore(state) +
-      stableEdgeScore(state) +
-      parityScore(state) +
-      pieceScore(state)
-    );
-  }
-
-  function isGameOver(state){
-
-    return (
-      getMoves(state,WHITE).length === 0 &&
-      getMoves(state,BLACK).length === 0
-    );
-  }
+  // =====================
+  // 空き数
+  // =====================
 
   function emptyCount(state){
 
     let n = 0;
 
-    for(let y=0;y<SIZE;y++){
-      for(let x=0;x<SIZE;x++){
+    for(let y=0;y<8;y++){
+      for(let x=0;x<8;x++){
 
         if(state[y][x] === EMPTY){
           n++;
@@ -333,156 +239,489 @@ function cpuMove3(board){
     return n;
   }
 
-  function minimax(state,depth,alpha,beta,player){
+  // =====================
+  // mobility
+  // =====================
 
-    if(depth === 0 || isGameOver(state)){
-      return evaluate(state);
+  function mobility(state){
+
+    return (
+      generateMoves(state,WHITE).length -
+      generateMoves(state,BLACK).length
+    );
+  }
+
+  // =====================
+  // frontier
+  // =====================
+
+  function frontier(state){
+
+    let w = 0;
+    let b = 0;
+
+    for(let y=0;y<8;y++){
+      for(let x=0;x<8;x++){
+
+        const p = state[y][x];
+
+        if(p === EMPTY){
+          continue;
+        }
+
+        let front = false;
+
+        for(let i=0;i<8;i++){
+
+          const nx = x + dirs[i][0];
+          const ny = y + dirs[i][1];
+
+          if(
+            inRange(nx,ny) &&
+            state[ny][nx] === EMPTY
+          ){
+            front = true;
+            break;
+          }
+        }
+
+        if(front){
+
+          if(p === WHITE) w++;
+          else b++;
+        }
+      }
     }
 
-    const moves = getMoves(state,player);
+    return b - w;
+  }
 
-    if(moves.length === 0){
+  // =====================
+  // 角
+  // =====================
 
-      return minimax(
-        state,
-        depth - 1,
-        alpha,
-        beta,
-        opponent(player)
+  function cornerScore(state){
+
+    const corners = [
+      [0,0],
+      [0,7],
+      [7,0],
+      [7,7]
+    ];
+
+    let s = 0;
+
+    for(let i=0;i<4;i++){
+
+      const c = corners[i];
+
+      const p = state[c[1]][c[0]];
+
+      if(p === WHITE){
+        s += 1000;
+      }
+
+      if(p === BLACK){
+        s -= 1000;
+      }
+    }
+
+    return s;
+  }
+
+  // =====================
+  // X/C penalty
+  // =====================
+
+  function dangerScore(state){
+
+    let s = 0;
+
+    // X
+
+    if(
+      state[0][0] === EMPTY
+    ){
+
+      if(state[1][1] === WHITE){
+        s -= 300;
+      }
+
+      if(state[1][1] === BLACK){
+        s += 300;
+      }
+    }
+
+    if(
+      state[0][7] === EMPTY
+    ){
+
+      if(state[1][6] === WHITE){
+        s -= 300;
+      }
+
+      if(state[1][6] === BLACK){
+        s += 300;
+      }
+    }
+
+    if(
+      state[7][0] === EMPTY
+    ){
+
+      if(state[6][1] === WHITE){
+        s -= 300;
+      }
+
+      if(state[6][1] === BLACK){
+        s += 300;
+      }
+    }
+
+    if(
+      state[7][7] === EMPTY
+    ){
+
+      if(state[6][6] === WHITE){
+        s -= 300;
+      }
+
+      if(state[6][6] === BLACK){
+        s += 300;
+      }
+    }
+
+    return s;
+  }
+
+  // =====================
+  // 評価盤
+  // =====================
+
+  function pstScore(state){
+
+    let s = 0;
+
+    for(let y=0;y<8;y++){
+      for(let x=0;x<8;x++){
+
+        const p = state[y][x];
+
+        if(p === WHITE){
+
+          s += PST[y][x];
+        }
+
+        if(p === BLACK){
+
+          s -= PST[y][x];
+        }
+      }
+    }
+
+    return s;
+  }
+
+  // =====================
+  // 石数
+  // =====================
+
+  function discScore(state){
+
+    let w = 0;
+    let b = 0;
+
+    for(let y=0;y<8;y++){
+      for(let x=0;x<8;x++){
+
+        if(state[y][x] === WHITE){
+          w++;
+        }
+
+        if(state[y][x] === BLACK){
+          b++;
+        }
+      }
+    }
+
+    return w - b;
+  }
+
+  // =====================
+  // 終局
+  // =====================
+
+  function gameOver(state){
+
+    return (
+      generateMoves(state,WHITE).length === 0 &&
+      generateMoves(state,BLACK).length === 0
+    );
+  }
+
+  // =====================
+  // 評価
+  // =====================
+
+  function evaluate(state){
+
+    if(gameOver(state)){
+
+      const d = discScore(state);
+
+      if(d > 0) return INF;
+      if(d < 0) return -INF;
+
+      return 0;
+    }
+
+    const empties =
+      emptyCount(state);
+
+    // 序盤
+    if(empties > 40){
+
+      return (
+        mobility(state) * 80 +
+        frontier(state) * 40 +
+        cornerScore(state) * 10 +
+        pstScore(state) * 2 +
+        dangerScore(state)
       );
     }
 
-    // MAX
-    if(player === WHITE){
+    // 中盤
+    if(empties > 14){
 
-      let best = -Infinity;
-
-      for(const move of moves){
-
-        const next = applyMove(state,move,WHITE);
-
-        const score = minimax(
-          next,
-          depth - 1,
-          alpha,
-          beta,
-          BLACK
-        );
-
-        best = Math.max(best,score);
-
-        alpha = Math.max(alpha,best);
-
-        if(beta <= alpha){
-          break;
-        }
-      }
-
-      return best;
-
-    // MIN
-    }else{
-
-      let best = Infinity;
-
-      for(const move of moves){
-
-        const next = applyMove(state,move,BLACK);
-
-        const score = minimax(
-          next,
-          depth - 1,
-          alpha,
-          beta,
-          WHITE
-        );
-
-        best = Math.min(best,score);
-
-        beta = Math.min(beta,best);
-
-        if(beta <= alpha){
-          break;
-        }
-      }
-
-      return best;
+      return (
+        mobility(state) * 60 +
+        frontier(state) * 25 +
+        cornerScore(state) * 10 +
+        pstScore(state) * 4 +
+        discScore(state) * 2 +
+        dangerScore(state)
+      );
     }
+
+    // 終盤
+
+    return (
+      mobility(state) * 30 +
+      cornerScore(state) * 15 +
+      pstScore(state) * 2 +
+      discScore(state) * 100 +
+      dangerScore(state)
+    );
   }
 
   // =====================
-  // 探索深さ
+  // move ordering
   // =====================
 
-  let depth = 7;
+  function sortMoves(state,moves,player){
 
-  const empties = emptyCount(board);
+    moves.sort((a,b)=>{
 
-  // 中盤強化
-  if(empties <= 24){
-    depth = 8;
+      let sa = 0;
+      let sb = 0;
+
+      sa += PST[a.y][a.x];
+      sb += PST[b.y][b.x];
+
+      sa += a.flips.length * 3;
+      sb += b.flips.length * 3;
+
+      if(
+        (a.x===0&&a.y===0)||
+        (a.x===0&&a.y===7)||
+        (a.x===7&&a.y===0)||
+        (a.x===7&&a.y===7)
+      ){
+        sa += 9999;
+      }
+
+      if(
+        (b.x===0&&b.y===0)||
+        (b.x===0&&b.y===7)||
+        (b.x===7&&b.y===0)||
+        (b.x===7&&b.y===7)
+      ){
+        sb += 9999;
+      }
+
+      return sb - sa;
+    });
   }
-
-  // 終盤強化
-  if(empties <= 18){
-    depth = 10;
-  }
-
-  // 準完全読み
-  if(empties <= 12){
-    depth = 12;
-  }
-
-  // 完全読みに近づける
-  if(empties <= 8){
-    depth = 14;
-  }
-
-  let moves = getMoves(board,WHITE);
 
   // =====================
-  // 手順並べ替え
+  // PVS Negamax
   // =====================
 
-  moves.sort((a,b)=>{
+  function negamax(
+    state,
+    depth,
+    alpha,
+    beta,
+    player
+  ){
 
-    const sa =
-      evalBoard[a.y][a.x] +
-      a.flips.length * 2;
+    if(
+      depth <= 0 ||
+      gameOver(state)
+    ){
+      return (
+        player === WHITE
+        ? evaluate(state)
+        : -evaluate(state)
+      );
+    }
 
-    const sb =
-      evalBoard[b.y][b.x] +
-      b.flips.length * 2;
+    let moves =
+      generateMoves(state,player);
 
-    return sb - sa;
-  });
+    // pass
 
-  if(moves.length === 0){
+    if(moves.length === 0){
+
+      return -negamax(
+        state,
+        depth - 1,
+        -beta,
+        -alpha,
+        opp(player)
+      );
+    }
+
+    sortMoves(state,moves,player);
+
+    let first = true;
+
+    for(let i=0;i<moves.length;i++){
+
+      const move = moves[i];
+
+      doMove(state,move,player);
+
+      let score;
+
+      // PVS
+
+      if(first){
+
+        score = -negamax(
+          state,
+          depth - 1,
+          -beta,
+          -alpha,
+          opp(player)
+        );
+
+        first = false;
+
+      }else{
+
+        score = -negamax(
+          state,
+          depth - 1,
+          -alpha - 1,
+          -alpha,
+          opp(player)
+        );
+
+        if(
+          alpha < score &&
+          score < beta
+        ){
+
+          score = -negamax(
+            state,
+            depth - 1,
+            -beta,
+            -score,
+            opp(player)
+          );
+        }
+      }
+
+      undoMove(state,move,player);
+
+      if(score > alpha){
+
+        alpha = score;
+      }
+
+      if(alpha >= beta){
+
+        break;
+      }
+    }
+
+    return alpha;
+  }
+
+  // =====================
+  // iterative deepening
+  // =====================
+
+  let bestMove = null;
+
+  let maxDepth = 8;
+
+  const empties =
+    emptyCount(board);
+
+  if(empties <= 20){
+    maxDepth = 10;
+  }
+
+  if(empties <= 14){
+    maxDepth = 14;
+  }
+
+  let rootMoves =
+    generateMoves(board,WHITE);
+
+  if(rootMoves.length === 0){
     return null;
   }
 
-  let bestMove = null;
-  let bestScore = -Infinity;
+  sortMoves(board,rootMoves,WHITE);
 
-  for(const move of moves){
+  for(
+    let depth = 2;
+    depth <= maxDepth;
+    depth++
+  ){
 
-    const next = applyMove(board,move,WHITE);
+    let bestScore = -INF;
 
-    const score = minimax(
-      next,
-      depth,
-      -Infinity,
-      Infinity,
-      BLACK
-    );
+    for(let i=0;i<rootMoves.length;i++){
 
-    if(score > bestScore){
+      const move = rootMoves[i];
 
-      bestScore = score;
+      doMove(board,move,WHITE);
 
-      bestMove = move;
+      const score = -negamax(
+        board,
+        depth - 1,
+        -INF,
+        INF,
+        BLACK
+      );
+
+      undoMove(board,move,WHITE);
+
+      if(score > bestScore){
+
+        bestScore = score;
+
+        bestMove = move;
+      }
     }
   }
 
-  return [bestMove.x,bestMove.y];
+  return [
+    bestMove.x,
+    bestMove.y
+  ];
 }
