@@ -4,7 +4,7 @@ const ctx = canvas.getContext("2d");
 const SIZE = 8;
 const CELL = canvas.width / SIZE;
 
-// 盤面（8×8マス）
+// 盤面（8×8）
 let board = Array.from({ length: SIZE }, () =>
   Array(SIZE).fill(0)
 );
@@ -17,7 +17,6 @@ board[4][4] = 2;
 
 let current = 1;
 
-// 8方向
 const dirs = [
   [-1,-1],[-1,0],[-1,1],
   [0,-1],        [0,1],
@@ -57,7 +56,7 @@ function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
   // =====================
-  // グリッド
+  // グリッド（交点ベース）
   // =====================
   ctx.strokeStyle = "black";
 
@@ -74,9 +73,7 @@ function draw(){
   }
 
   // =====================
-  // 星（指定位置）
-  // (3,3) (3,5)
-  // (5,3) (5,5)
+  // 星（交点固定）
   // =====================
   const stars = [
     [3,3],[3,5],
@@ -88,8 +85,8 @@ function draw(){
   for(const [x,y] of stars){
     ctx.beginPath();
     ctx.arc(
-      x * CELL + CELL / 2,
-      y * CELL + CELL / 2,
+      x * CELL,
+      y * CELL,
       3,
       0,
       Math.PI * 2
@@ -98,7 +95,7 @@ function draw(){
   }
 
   // =====================
-  // 駒
+  // 駒（マス中心）
   // =====================
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
@@ -106,8 +103,8 @@ function draw(){
 
       ctx.beginPath();
       ctx.arc(
-        x * CELL + CELL / 2,
-        y * CELL + CELL / 2,
+        x * CELL + CELL/2,
+        y * CELL + CELL/2,
         CELL * 0.4,
         0,
         Math.PI * 2
