@@ -3,7 +3,7 @@ body {
   justify-content: center;
   align-items: center;
   height: 100vh;
-  background: white;   /* ← 背景白 */
+  background: white;
   margin: 0;
 }
 
@@ -11,25 +11,30 @@ body {
   display: grid;
   grid-template-columns: repeat(8, 50px);
   grid-template-rows: repeat(8, 50px);
-  gap: 2px;
 
-  background: #2e7d32; /* 盤面の緑はそのまま */
-  padding: 10px;
+  background: #2e7d32;
 
-  border: 4px solid black;  /* ← 外枠黒 */
-  border-radius: 6px;
+  border: 4px solid black; /* 外枠黒 */
+  padding: 0;
 }
 
+/* マス */
 .cell {
   width: 50px;
   height: 50px;
-  background: #388e3c;
+  background: #3f8f3f;
+
   display: flex;
   justify-content: center;
   align-items: center;
+
+  box-sizing: border-box;
+
+  border: 1px solid black; /* ← 線を黒 */
   cursor: pointer;
 }
 
+/* 石 */
 .disc {
   width: 42px;
   height: 42px;
@@ -42,4 +47,19 @@ body {
 
 .white {
   background: white;
+}
+
+/* 星（点） */
+.star {
+  position: relative;
+}
+
+.star::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  background: black;
+  border-radius: 50%;
+
+  position: absolute;
 }
