@@ -4,7 +4,9 @@ const ctx = canvas.getContext("2d");
 const SIZE = 8;
 const CELL = canvas.width / SIZE;
 
-// 盤面（8×8）
+// =====================
+// 盤面（8×8マス）
+// =====================
 let board = Array.from({ length: SIZE }, () =>
   Array(SIZE).fill(0)
 );
@@ -17,6 +19,7 @@ board[4][4] = 2;
 
 let current = 1;
 
+// 8方向
 const dirs = [
   [-1,-1],[-1,0],[-1,1],
   [0,-1],        [0,1],
@@ -74,10 +77,11 @@ function draw(){
 
   // =====================
   // 星（交点固定）
+  // (2,2)(2,6)(6,2)(6,6)
   // =====================
   const stars = [
-    [3,3],[3,5],
-    [5,3],[5,5]
+    [2,2],[2,6],
+    [6,2],[6,6]
   ];
 
   ctx.fillStyle = "black";
@@ -95,7 +99,7 @@ function draw(){
   }
 
   // =====================
-  // 駒（マス中心）
+  // 駒（セル中心）
   // =====================
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
@@ -117,6 +121,9 @@ function draw(){
   }
 }
 
+// =====================
+// クリック処理
+// =====================
 canvas.addEventListener("click",(e)=>{
   const rect = canvas.getBoundingClientRect();
 
