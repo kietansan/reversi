@@ -297,7 +297,7 @@ function updateInfo(){
 
   const { black, white } = countPieces();
 
-  // 終局判定
+  // 終局
   if(!hasMove(1) && !hasMove(2)){
 
     let result = "";
@@ -346,7 +346,7 @@ function applyMove(x,y,player,next){
 
     if(!hasMove(current)){
 
-      // 両者置けない → 終局
+      // 相手も置けない → 終局
       if(!hasMove(current === 1 ? 2 : 1)){
 
         updateInfo();
@@ -354,13 +354,25 @@ function applyMove(x,y,player,next){
       }
 
       // パス
+      const passedPlayer = current;
+
       current = current === 1 ? 2 : 1;
 
       info.textContent =
-        `${current === 1 ? "白" : "黒"}は置ける場所がないためパス`;
+        `${passedPlayer === 1 ? "黒" : "白"}はパス`;
     }
 
     updateInfo();
+
+    // =====================
+    // CPU継続
+    // =====================
+
+    if(current === 2){
+
+      setTimeout(cpuTurn,200);
+
+    }
 
     if(next) next();
   });
@@ -398,7 +410,7 @@ canvas.addEventListener("click",(e)=>{
 
   if(animating) return;
 
-  // プレイヤーのみ
+  // 黒のみ操作
   if(current !== 1) return;
 
   const rect = canvas.getBoundingClientRect();
@@ -415,11 +427,7 @@ canvas.addEventListener("click",(e)=>{
 
   if(flips.length === 0) return;
 
-  applyMove(x,y,1,()=>{
-
-    setTimeout(cpuTurn,200);
-
-  });
+  applyMove(x,y,1);
 });
 
 // =====================
