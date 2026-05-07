@@ -312,6 +312,7 @@ function updateInfo(){
 
   const { black, white } = countPieces();
 
+  // 終局
   if(!hasMove(1) && !hasMove(2)){
 
     let result = "";
@@ -347,7 +348,7 @@ function applyMove(x,y,player){
   board[y][x] = player;
 
   // =====================
-  // 最初の着手で固定
+  // 最初の着手で難易度固定
   // =====================
 
   if(!gameStarted){
@@ -357,6 +358,7 @@ function applyMove(x,y,player){
     cpuSelect.disabled = true;
   }
 
+  // 音
   putSound.currentTime = 0;
   putSound.play();
 
@@ -364,10 +366,13 @@ function applyMove(x,y,player){
 
     current = current === 1 ? 2 : 1;
 
-    // パス
+    // =====================
+    // パス処理
+    // =====================
+
     if(!hasMove(current)){
 
-      // 終局
+      // 相手も置けない
       if(!hasMove(current === 1 ? 2 : 1)){
 
         updateInfo();
@@ -384,7 +389,10 @@ function applyMove(x,y,player){
 
     updateInfo();
 
+    // =====================
     // CPUターン
+    // =====================
+
     if(current === 2){
 
       setTimeout(cpuTurn,200);
@@ -403,13 +411,20 @@ function cpuTurn(){
 
   let move;
 
+  // 簡単CPU
   if(cpuSelect.value === "easy"){
 
     move = cpuMove(board);
 
-  }else{
+  // 少し強いCPU
+  }else if(cpuSelect.value === "hard"){
 
     move = cpuMove2(board);
+
+  // 強いCPU
+  }else{
+
+    move = cpuMove3(board);
   }
 
   if(!move){
@@ -436,6 +451,7 @@ canvas.addEventListener("click",(e)=>{
 
   if(animating) return;
 
+  // 黒のみ
   if(current !== 1) return;
 
   const rect = canvas.getBoundingClientRect();
