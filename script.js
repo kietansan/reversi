@@ -1,99 +1,63 @@
-// =====================
-// script.js
-// =====================
-
 const canvas = document.getElementById("board");
 const ctx = canvas.getContext("2d");
 
-const restartBtn =
-  document.getElementById("restartBtn");
-
-const info =
-  document.getElementById("info");
-
-const putSound =
-  document.getElementById("putSound");
-
-const EMPTY = 0;
-const BLACK = 1;
-const WHITE = 2;
+const info = document.getElementById("info");
+const putSound = document.getElementById("putSound");
+const restartBtn = document.getElementById("restartBtn");
+const cpuSelect = document.getElementById("cpuSelect");
 
 const SIZE = 8;
+const PADDING = 40;
 
-let boardSize;
-let cellSize;
+const BOARD_SIZE = canvas.width - PADDING * 2;
+const CELL = BOARD_SIZE / SIZE;
 
-let currentPlayer = BLACK;
+let animating = false;
 
-const board = [];
+// =====================
+// 最初の着手済み
+// =====================
+
+let gameStarted = false;
+
+let board;
+
+initBoard();
+
+let current = 1;
+
+// =====================
+// 8方向
+// =====================
+
+const dirs = [
+  [-1,-1],[-1,0],[-1,1],
+  [0,-1],        [0,1],
+  [1,-1],[1,0],[1,1]
+];
 
 // =====================
 // 初期化
 // =====================
 
-for(let y=0;y<SIZE;y++){
+function initBoard(){
 
-  board[y] = [];
+  board = Array.from({ length: SIZE }, () =>
+    Array(SIZE).fill(0)
+  );
 
-  for(let x=0;x<SIZE;x++){
-
-    board[y][x] = EMPTY;
-  }
+  board[3][3] = 2;
+  board[3][4] = 1;
+  board[4][3] = 1;
+  board[4][4] = 2;
 }
 
-board[3][3] = WHITE;
-board[4][4] = WHITE;
-
-board[3][4] = BLACK;
-board[4][3] = BLACK;
-
 // =====================
-// リサイズ
-// =====================
-
-function resizeCanvas(){
-
-  const rect =
-    canvas.getBoundingClientRect();
-
-  canvas.width = rect.width;
-  canvas.height = rect.height;
-
-  boardSize = canvas.width;
-
-  cellSize = boardSize / SIZE;
-
-  draw();
-}
-
-window.addEventListener(
-  "resize",
-  resizeCanvas
-);
-
-// =====================
-// 範囲判定
+// 範囲
 // =====================
 
 function inRange(x,y){
-
-  return (
-    x >= 0 &&
-    x < SIZE &&
-    y >= 0 &&
-    y < SIZE
-  );
-}
-
-// =====================
-// 相手
-// =====================
-
-function opponent(player){
-
-  return player === BLACK
-    ? WHITE
-    : BLACK;
+  return x>=0 && x<SIZE && y>=0 && y<SIZE;
 }
 
 // =====================
@@ -102,26 +66,9 @@ function opponent(player){
 
 function getFlips(x,y,player){
 
-  if(board[y][x] !== EMPTY){
-    return [];
-  }
+  if(board[y][x] !== 0) return [];
 
-  const enemy =
-    opponent(player);
-
-  const dirs = [
-
-    [-1,-1],
-    [-1, 0],
-    [-1, 1],
-
-    [ 0,-1],
-    [ 0, 1],
-
-    [ 1,-1],
-    [ 1, 0],
-    [ 1, 1]
-  ];
+  const opponent = player === 1 ? 2 : 1;
 
   let flips = [];
 
@@ -133,12 +80,9 @@ function getFlips(x,y,player){
     let line = [];
 
     while(
-
       inRange(nx,ny) &&
-      board[ny][nx] === enemy
-
+      board[ny][nx] === opponent
     ){
-
       line.push([nx,ny]);
 
       nx += dx;
@@ -146,14 +90,11 @@ function getFlips(x,y,player){
     }
 
     if(
-
-      line.length > 0 &&
       inRange(nx,ny) &&
-      board[ny][nx] === player
-
+      board[ny][nx] === player &&
+      line.length > 0
     ){
-
-      flips.push(...line);
+      flips = flips.concat(line);
     }
   }
 
@@ -169,15 +110,92 @@ function hasMove(player){
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
 
-      if(
-        getFlips(x,y,player).length > 0
-      ){
+      if(getFlips(x,y,player).length > 0){
         return true;
       }
+
     }
   }
 
   return false;
+}
+
+// =====================
+// 駒数
+// =====================
+
+function countPieces(){
+
+  let black = 0;
+  let white = 0;
+
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+
+      if(board[y][x] === 1) black++;
+      if(board[y][x] === 2) white++;
+
+    }
+  }
+
+  return { black, white };
+}
+
+// =====================
+// 駒描画
+// =====================
+
+function drawPiece(x,y,color,scale=1){
+
+  const cx =
+    PADDING +
+    x * CELL +
+    CELL / 2;
+
+  const cy =
+    PADDING +
+    y * CELL +
+    CELL / 2;
+
+  const r = CELL * 0.38 * scale;
+
+  ctx.beginPath();
+
+  ctx.arc(
+    cx,
+    cy,
+    r,
+    0,
+    Math.PI * 2
+  );
+
+  const grad = ctx.createRadialGradient(
+    cx - r*0.4,
+    cy - r*0.4,
+    r*0.2,
+    cx,
+    cy,
+    r
+  );
+
+  if(color === 1){
+
+    grad.addColorStop(0,"#666");
+    grad.addColorStop(1,"#000");
+
+  }else{
+
+    grad.addColorStop(0,"#fff");
+    grad.addColorStop(1,"#bbb");
+
+  }
+
+  ctx.fillStyle = grad;
+
+  ctx.fill();
+
+  ctx.strokeStyle = "black";
+  ctx.stroke();
 }
 
 // =====================
@@ -186,277 +204,104 @@ function hasMove(player){
 
 function draw(){
 
-  ctx.clearRect(
-    0,
-    0,
-    boardSize,
-    boardSize
-  );
+  ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // 背景
-
-  ctx.fillStyle = "#ffffff";
-
-  ctx.fillRect(
-    0,
-    0,
-    boardSize,
-    boardSize
-  );
-
-  // 線
-
-  ctx.strokeStyle = "#000000";
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = "black";
 
   for(let i=0;i<=SIZE;i++){
 
-    const pos =
-      i * cellSize;
-
-    // 横線
+    const pos = PADDING + i * CELL;
 
     ctx.beginPath();
-
-    ctx.moveTo(
-      0,
-      pos
-    );
-
-    ctx.lineTo(
-      boardSize,
-      pos
-    );
-
+    ctx.moveTo(pos,PADDING);
+    ctx.lineTo(pos,PADDING + BOARD_SIZE);
     ctx.stroke();
 
-    // 縦線
-
     ctx.beginPath();
-
-    ctx.moveTo(
-      pos,
-      0
-    );
-
-    ctx.lineTo(
-      pos,
-      boardSize
-    );
-
+    ctx.moveTo(PADDING,pos);
+    ctx.lineTo(PADDING + BOARD_SIZE,pos);
     ctx.stroke();
   }
 
-  // =====================
   // 星
-  // =====================
-
   const stars = [
-
-    [2,2],
-    [2,6],
-
-    [6,2],
-    [6,6]
+    [2,2],[2,6],
+    [6,2],[6,6]
   ];
 
-  for(const [sx,sy] of stars){
+  ctx.fillStyle = "black";
 
-    const px =
-      sx * cellSize
-      + cellSize / 2;
-
-    const py =
-      sy * cellSize
-      + cellSize / 2;
+  for(const [x,y] of stars){
 
     ctx.beginPath();
 
     ctx.arc(
-      px,
-      py,
+      PADDING + x * CELL,
+      PADDING + y * CELL,
       4,
       0,
       Math.PI * 2
     );
 
-    ctx.fillStyle = "#000000";
-
     ctx.fill();
   }
 
-  // =====================
-  // 石
-  // =====================
-
+  // 駒
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
 
-      const p = board[y][x];
+      if(board[y][x] === 0) continue;
 
-      if(p === EMPTY){
-        continue;
-      }
-
-      const cx =
-        x * cellSize
-        + cellSize / 2;
-
-      const cy =
-        y * cellSize
-        + cellSize / 2;
-
-      const r =
-        cellSize * 0.36;
-
-      const grad =
-        ctx.createRadialGradient(
-
-          cx - r * 0.3,
-          cy - r * 0.3,
-          r * 0.1,
-
-          cx,
-          cy,
-          r
-        );
-
-      if(p === BLACK){
-
-        grad.addColorStop(
-          0,
-          "#666666"
-        );
-
-        grad.addColorStop(
-          1,
-          "#000000"
-        );
-
-      }else{
-
-        grad.addColorStop(
-          0,
-          "#ffffff"
-        );
-
-        grad.addColorStop(
-          1,
-          "#cccccc"
-        );
-      }
-
-      ctx.beginPath();
-
-      ctx.arc(
-        cx,
-        cy,
-        r,
-        0,
-        Math.PI * 2
-      );
-
-      ctx.fillStyle = grad;
-
-      ctx.fill();
+      drawPiece(x,y,board[y][x]);
     }
   }
 }
 
 // =====================
-// 石配置
+// 反転アニメ
 // =====================
 
-function placeStone(x,y){
+function animateFlip(flips,newColor,callback){
 
-  const flips =
-    getFlips(
-      x,
-      y,
-      currentPlayer
-    );
+  let frame = 0;
 
-  if(flips.length === 0){
-    return;
-  }
+  animating = true;
 
-  board[y][x] =
-    currentPlayer;
+  function loop(){
 
-  for(const [fx,fy] of flips){
+    frame++;
 
-    board[fy][fx] =
-      currentPlayer;
-  }
+    const s =
+      frame < 6
+      ? 1 - frame * 0.12
+      : 0.3 + (frame - 6) * 0.12;
 
-  // 音
+    draw();
 
-  putSound.currentTime = 0;
-  putSound.play();
+    for(const [x,y] of flips){
+      drawPiece(x,y,newColor,s);
+    }
 
-  // 手番交代
+    if(frame < 12){
 
-  currentPlayer =
-    opponent(currentPlayer);
+      requestAnimationFrame(loop);
 
-  // パス処理
+    }else{
 
-  if(!hasMove(currentPlayer)){
+      for(const [x,y] of flips){
+        board[y][x] = newColor;
+      }
 
-    currentPlayer =
-      opponent(currentPlayer);
+      animating = false;
 
-    // 両者置けない
+      draw();
 
-    if(!hasMove(currentPlayer)){
-
-      finishGame();
-      return;
+      if(callback) callback();
     }
   }
 
-  updateInfo();
-
-  draw();
-}
-
-// =====================
-// 終局
-// =====================
-
-function finishGame(){
-
-  let black = 0;
-  let white = 0;
-
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-
-      if(board[y][x] === BLACK){
-        black++;
-      }
-
-      if(board[y][x] === WHITE){
-        white++;
-      }
-    }
-  }
-
-  if(black > white){
-
-    info.textContent =
-      `黒の勝ち ${black}-${white}`;
-
-  }else if(white > black){
-
-    info.textContent =
-      `白の勝ち ${white}-${black}`;
-
-  }else{
-
-    info.textContent =
-      `引き分け ${black}-${white}`;
-  }
+  loop();
 }
 
 // =====================
@@ -465,101 +310,191 @@ function finishGame(){
 
 function updateInfo(){
 
-  info.textContent =
+  const { black, white } = countPieces();
 
-    currentPlayer === BLACK
+  // 終局
+  if(!hasMove(1) && !hasMove(2)){
 
-    ? "黒の番"
+    let result = "";
 
-    : "白の番";
-}
+    if(black > white){
+      result = "黒の勝ち";
+    }else if(white > black){
+      result = "白の勝ち";
+    }else{
+      result = "引き分け";
+    }
 
-// =====================
-// 入力
-// =====================
+    info.textContent =
+      `終了 黒:${black} 白:${white} ${result}`;
 
-canvas.addEventListener(
-  "pointerdown",
-  handleInput
-);
-
-function handleInput(e){
-
-  e.preventDefault();
-
-  const rect =
-    canvas.getBoundingClientRect();
-
-  const clientX =
-    e.clientX;
-
-  const clientY =
-    e.clientY;
-
-  const x = Math.floor(
-
-    (
-      clientX
-      - rect.left
-    )
-
-    / cellSize
-  );
-
-  const y = Math.floor(
-
-    (
-      clientY
-      - rect.top
-    )
-
-    / cellSize
-  );
-
-  if(!inRange(x,y)){
     return;
   }
 
-  placeStone(x,y);
+  info.textContent =
+    `${current === 1 ? "黒" : "白"}の番 黒:${black} 白:${white}`;
 }
+
+// =====================
+// 着手
+// =====================
+
+function applyMove(x,y,player){
+
+  const flips = getFlips(x,y,player);
+
+  if(flips.length === 0) return;
+
+  board[y][x] = player;
+
+  // =====================
+  // 最初の着手で難易度固定
+  // =====================
+
+  if(!gameStarted){
+
+    gameStarted = true;
+
+    cpuSelect.disabled = true;
+  }
+
+  // 音
+  putSound.currentTime = 0;
+  putSound.play();
+
+  animateFlip(flips,player,()=>{
+
+    current = current === 1 ? 2 : 1;
+
+    // =====================
+    // パス処理
+    // =====================
+
+    if(!hasMove(current)){
+
+      // 相手も置けない
+      if(!hasMove(current === 1 ? 2 : 1)){
+
+        updateInfo();
+        return;
+      }
+
+      const passedPlayer = current;
+
+      current = current === 1 ? 2 : 1;
+
+      info.textContent =
+        `${passedPlayer === 1 ? "黒" : "白"}はパス`;
+    }
+
+    updateInfo();
+
+    // =====================
+    // CPUターン
+    // =====================
+
+    if(current === 2){
+
+      setTimeout(cpuTurn,200);
+
+    }
+  });
+}
+
+// =====================
+// CPUターン
+// =====================
+
+function cpuTurn(){
+
+  if(current !== 2) return;
+
+  let move;
+
+  // 簡単CPU
+  if(cpuSelect.value === "easy"){
+
+    move = cpuMove(board);
+
+  // 少し強いCPU
+  }else if(cpuSelect.value === "hard"){
+
+    move = cpuMove2(board);
+
+  // 強いCPU
+  }else{
+
+    move = cpuMove3(board);
+  }
+
+  if(!move){
+
+    current = 1;
+    updateInfo();
+    return;
+  }
+
+  const [x,y] = move;
+
+  setTimeout(()=>{
+
+    applyMove(x,y,2);
+
+  },300);
+}
+
+// =====================
+// クリック
+// =====================
+
+canvas.addEventListener("click",(e)=>{
+
+  if(animating) return;
+
+  // 黒のみ
+  if(current !== 1) return;
+
+  const rect = canvas.getBoundingClientRect();
+
+  const mx = e.clientX - rect.left - PADDING;
+  const my = e.clientY - rect.top - PADDING;
+
+  const x = Math.floor(mx / CELL);
+  const y = Math.floor(my / CELL);
+
+  if(!inRange(x,y)) return;
+
+  const flips = getFlips(x,y,1);
+
+  if(flips.length === 0) return;
+
+  applyMove(x,y,1);
+});
 
 // =====================
 // リスタート
 // =====================
 
-restartBtn.addEventListener(
+restartBtn.addEventListener("click",()=>{
 
-  "click",
+  initBoard();
 
-  ()=>{
+  current = 1;
 
-    for(let y=0;y<SIZE;y++){
-      for(let x=0;x<SIZE;x++){
+  animating = false;
 
-        board[y][x] = EMPTY;
-      }
-    }
+  // 難易度再選択可能
+  gameStarted = false;
 
-    board[3][3] = WHITE;
-    board[4][4] = WHITE;
+  cpuSelect.disabled = false;
 
-    board[3][4] = BLACK;
-    board[4][3] = BLACK;
-
-    currentPlayer = BLACK;
-
-    updateInfo();
-
-    draw();
-  }
-);
+  draw();
+  updateInfo();
+});
 
 // =====================
-// 開始
+// 初期描画
 // =====================
-
-resizeCanvas();
-
-updateInfo();
 
 draw();
+updateInfo();
