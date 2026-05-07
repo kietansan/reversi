@@ -2,7 +2,9 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>リバーシ</title>
+
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -17,9 +19,23 @@
 
 </div>
 
-<audio id="putSound" src="2.mp3" preload="auto"></audio>
+<!-- 効果音 -->
+<audio
+  id="putSound"
+  src="2.mp3"
+  preload="auto">
+</audio>
 
+<!-- CPU -->
+<!-- 簡単CPU -->
 <script src="cpu.js"></script>
+
+<!-- 少し強いCPUを使う場合 -->
+<!--
+<script src="cpu2.js"></script>
+-->
+
+<!-- 本体 -->
 <script src="script.js"></script>
 
 </body>
