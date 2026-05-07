@@ -4,6 +4,7 @@ const ctx = canvas.getContext("2d");
 const info = document.getElementById("info");
 const putSound = document.getElementById("putSound");
 const restartBtn = document.getElementById("restartBtn");
+const cpuSelect = document.getElementById("cpuSelect");
 
 const SIZE = 8;
 const PADDING = 40;
@@ -20,19 +21,9 @@ initBoard();
 let current = 1;
 
 // =====================
-// 使用CPU
-//
-// cpu.js  → 簡単
-// cpu2.js → 少し強い
-// =====================
-
-// cpu2.js を読み込む場合も
-// 関数名は cpuMove のまま
-// 自動で切り替わる
-
-// =====================
 // 8方向
 // =====================
+
 const dirs = [
   [-1,-1],[-1,0],[-1,1],
   [0,-1],        [0,1],
@@ -42,13 +33,13 @@ const dirs = [
 // =====================
 // 初期化
 // =====================
+
 function initBoard(){
 
   board = Array.from({ length: SIZE }, () =>
     Array(SIZE).fill(0)
   );
 
-  // 初期配置
   board[3][3] = 2;
   board[3][4] = 1;
   board[4][3] = 1;
@@ -56,8 +47,9 @@ function initBoard(){
 }
 
 // =====================
-// 範囲チェック
+// 範囲
 // =====================
+
 function inRange(x,y){
   return x>=0 && x<SIZE && y>=0 && y<SIZE;
 }
@@ -65,6 +57,7 @@ function inRange(x,y){
 // =====================
 // 反転取得
 // =====================
+
 function getFlips(x,y,player){
 
   if(board[y][x] !== 0) return [];
@@ -105,6 +98,7 @@ function getFlips(x,y,player){
 // =====================
 // 合法手存在
 // =====================
+
 function hasMove(player){
 
   for(let y=0;y<SIZE;y++){
@@ -123,6 +117,7 @@ function hasMove(player){
 // =====================
 // 駒数
 // =====================
+
 function countPieces(){
 
   let black = 0;
@@ -143,6 +138,7 @@ function countPieces(){
 // =====================
 // 駒描画
 // =====================
+
 function drawPiece(x,y,color,scale=1){
 
   const cx =
@@ -199,11 +195,11 @@ function drawPiece(x,y,color,scale=1){
 // =====================
 // 描画
 // =====================
+
 function draw(){
 
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // グリッド
   ctx.lineWidth = 1;
   ctx.strokeStyle = "black";
 
@@ -259,6 +255,7 @@ function draw(){
 // =====================
 // 反転アニメ
 // =====================
+
 function animateFlip(flips,newColor,callback){
 
   let frame = 0;
@@ -304,11 +301,11 @@ function animateFlip(flips,newColor,callback){
 // =====================
 // 表示更新
 // =====================
+
 function updateInfo(){
 
   const { black, white } = countPieces();
 
-  // 終局
   if(!hasMove(1) && !hasMove(2)){
 
     let result = "";
@@ -334,6 +331,7 @@ function updateInfo(){
 // =====================
 // 着手
 // =====================
+
 function applyMove(x,y,player){
 
   const flips = getFlips(x,y,player);
@@ -342,29 +340,23 @@ function applyMove(x,y,player){
 
   board[y][x] = player;
 
-  // 音
   putSound.currentTime = 0;
   putSound.play();
 
   animateFlip(flips,player,()=>{
 
-    // ターン交代
     current = current === 1 ? 2 : 1;
 
-    // =====================
-    // パス処理
-    // =====================
-
+    // パス
     if(!hasMove(current)){
 
-      // 相手も置けない → 終局
+      // 終局
       if(!hasMove(current === 1 ? 2 : 1)){
 
         updateInfo();
         return;
       }
 
-      // パス
       const passedPlayer = current;
 
       current = current === 1 ? 2 : 1;
@@ -387,11 +379,21 @@ function applyMove(x,y,player){
 // =====================
 // CPUターン
 // =====================
+
 function cpuTurn(){
 
   if(current !== 2) return;
 
-  const move = cpuMove(board);
+  let move;
+
+  if(cpuSelect.value === "easy"){
+
+    move = cpuMove(board);
+
+  }else{
+
+    move = cpuMove2(board);
+  }
 
   if(!move){
 
@@ -412,11 +414,11 @@ function cpuTurn(){
 // =====================
 // クリック
 // =====================
+
 canvas.addEventListener("click",(e)=>{
 
   if(animating) return;
 
-  // 黒のみ
   if(current !== 1) return;
 
   const rect = canvas.getBoundingClientRect();
@@ -439,6 +441,7 @@ canvas.addEventListener("click",(e)=>{
 // =====================
 // リスタート
 // =====================
+
 restartBtn.addEventListener("click",()=>{
 
   initBoard();
@@ -454,5 +457,6 @@ restartBtn.addEventListener("click",()=>{
 // =====================
 // 初期描画
 // =====================
+
 draw();
 updateInfo();
