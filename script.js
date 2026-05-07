@@ -19,28 +19,41 @@ initBoard();
 
 let current = 1;
 
+// =====================
+// 8方向
+// =====================
 const dirs = [
   [-1,-1],[-1,0],[-1,1],
   [0,-1],        [0,1],
   [1,-1],[1,0],[1,1]
 ];
 
+// =====================
+// 初期化
+// =====================
 function initBoard(){
 
   board = Array.from({ length: SIZE }, () =>
     Array(SIZE).fill(0)
   );
 
+  // 初期配置
   board[3][3] = 2;
   board[3][4] = 1;
   board[4][3] = 1;
   board[4][4] = 2;
 }
 
+// =====================
+// 範囲チェック
+// =====================
 function inRange(x,y){
   return x>=0 && x<SIZE && y>=0 && y<SIZE;
 }
 
+// =====================
+// 反転取得
+// =====================
 function getFlips(x,y,player){
 
   if(board[y][x] !== 0) return [];
@@ -78,6 +91,9 @@ function getFlips(x,y,player){
   return flips;
 }
 
+// =====================
+// 合法手存在
+// =====================
 function hasMove(player){
 
   for(let y=0;y<SIZE;y++){
@@ -93,6 +109,9 @@ function hasMove(player){
   return false;
 }
 
+// =====================
+// 駒数
+// =====================
 function countPieces(){
 
   let black = 0;
@@ -110,6 +129,9 @@ function countPieces(){
   return { black, white };
 }
 
+// =====================
+// 駒描画
+// =====================
 function drawPiece(x,y,color,scale=1){
 
   const cx =
@@ -163,10 +185,14 @@ function drawPiece(x,y,color,scale=1){
   ctx.stroke();
 }
 
+// =====================
+// 描画
+// =====================
 function draw(){
 
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
+  // グリッド
   ctx.lineWidth = 1;
   ctx.strokeStyle = "black";
 
@@ -185,6 +211,7 @@ function draw(){
     ctx.stroke();
   }
 
+  // 星（交点）
   const stars = [
     [2,2],[2,6],
     [6,2],[6,6]
@@ -207,6 +234,7 @@ function draw(){
     ctx.fill();
   }
 
+  // 駒
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
 
@@ -217,6 +245,9 @@ function draw(){
   }
 }
 
+// =====================
+// 反転アニメ
+// =====================
 function animateFlip(flips,newColor,callback){
 
   let frame = 0;
@@ -259,10 +290,14 @@ function animateFlip(flips,newColor,callback){
   loop();
 }
 
+// =====================
+// 表示更新
+// =====================
 function updateInfo(){
 
   const { black, white } = countPieces();
 
+  // 終局判定
   if(!hasMove(1) && !hasMove(2)){
 
     let result = "";
@@ -285,6 +320,9 @@ function updateInfo(){
     `${current === 1 ? "黒" : "白"}の番 黒:${black} 白:${white}`;
 }
 
+// =====================
+// 着手
+// =====================
 function applyMove(x,y,player,next){
 
   const flips = getFlips(x,y,player);
@@ -293,12 +331,34 @@ function applyMove(x,y,player,next){
 
   board[y][x] = player;
 
+  // 音
   putSound.currentTime = 0;
   putSound.play();
 
   animateFlip(flips,player,()=>{
 
+    // ターン交代
     current = current === 1 ? 2 : 1;
+
+    // =====================
+    // パス処理
+    // =====================
+
+    if(!hasMove(current)){
+
+      // 両者置けない → 終局
+      if(!hasMove(current === 1 ? 2 : 1)){
+
+        updateInfo();
+        return;
+      }
+
+      // パス
+      current = current === 1 ? 2 : 1;
+
+      info.textContent =
+        `${current === 1 ? "白" : "黒"}は置ける場所がないためパス`;
+    }
 
     updateInfo();
 
@@ -306,6 +366,9 @@ function applyMove(x,y,player,next){
   });
 }
 
+// =====================
+// CPUターン
+// =====================
 function cpuTurn(){
 
   if(current !== 2) return;
@@ -328,9 +391,14 @@ function cpuTurn(){
   },300);
 }
 
+// =====================
+// クリック
+// =====================
 canvas.addEventListener("click",(e)=>{
 
   if(animating) return;
+
+  // プレイヤーのみ
   if(current !== 1) return;
 
   const rect = canvas.getBoundingClientRect();
@@ -354,6 +422,9 @@ canvas.addEventListener("click",(e)=>{
   });
 });
 
+// =====================
+// リスタート
+// =====================
 restartBtn.addEventListener("click",()=>{
 
   initBoard();
@@ -366,5 +437,8 @@ restartBtn.addEventListener("click",()=>{
   updateInfo();
 });
 
+// =====================
+// 初期描画
+// =====================
 draw();
 updateInfo();
