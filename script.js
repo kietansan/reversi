@@ -44,6 +44,7 @@ for(let y=0;y<SIZE;y++){
 
 board[3][3] = WHITE;
 board[4][4] = WHITE;
+
 board[3][4] = BLACK;
 board[4][3] = BLACK;
 
@@ -61,8 +62,8 @@ function resizeCanvas(){
 
   boardSize = canvas.width;
 
-  // 8交点 = 7区間
-  cellSize = boardSize / 7;
+  // 8マス
+  cellSize = boardSize / 8;
 
   // 外周余白
   offset = cellSize / 2;
