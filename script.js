@@ -4,7 +4,7 @@ const ctx = canvas.getContext("2d");
 const SIZE = 8;
 const CELL = canvas.width / SIZE;
 
-// 盤面（マス）
+// 盤面（8×8マス）
 let board = Array.from({ length: SIZE }, () =>
   Array(SIZE).fill(0)
 );
@@ -28,7 +28,6 @@ function inRange(x,y){
   return x>=0 && x<SIZE && y>=0 && y<SIZE;
 }
 
-// 反転チェック
 function getFlips(x,y,player){
   if(board[y][x] !== 0) return [];
 
@@ -54,11 +53,12 @@ function getFlips(x,y,player){
   return flips;
 }
 
-// 描画
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // グリッド線
+  // =====================
+  // グリッド
+  // =====================
   ctx.strokeStyle = "black";
 
   for(let i=0;i<=SIZE;i++){
@@ -73,10 +73,14 @@ function draw(){
     ctx.stroke();
   }
 
-  // 星（交点＝線の交差点）
+  // =====================
+  // 星（指定位置）
+  // (3,3) (3,5)
+  // (5,3) (5,5)
+  // =====================
   const stars = [
-    [2,2],[2,5],
-    [5,2],[5,5]
+    [3,3],[3,5],
+    [5,3],[5,5]
   ];
 
   ctx.fillStyle = "black";
@@ -84,39 +88,38 @@ function draw(){
   for(const [x,y] of stars){
     ctx.beginPath();
     ctx.arc(
-      x*CELL,
-      y*CELL,
+      x * CELL + CELL / 2,
+      y * CELL + CELL / 2,
       3,
       0,
-      Math.PI*2
+      Math.PI * 2
     );
     ctx.fill();
   }
 
-  // 駒（マス中心）
+  // =====================
+  // 駒
+  // =====================
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
-
       if(board[y][x] === 0) continue;
 
       ctx.beginPath();
       ctx.arc(
-        x*CELL + CELL/2,
-        y*CELL + CELL/2,
-        CELL*0.4,
+        x * CELL + CELL / 2,
+        y * CELL + CELL / 2,
+        CELL * 0.4,
         0,
-        Math.PI*2
+        Math.PI * 2
       );
 
       ctx.fillStyle = board[y][x] === 1 ? "black" : "white";
       ctx.fill();
-
       ctx.stroke();
     }
   }
 }
 
-// クリック（マス変換）
 canvas.addEventListener("click",(e)=>{
   const rect = canvas.getBoundingClientRect();
 
