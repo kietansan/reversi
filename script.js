@@ -1,9 +1,4 @@
 const canvas = document.getElementById("board");
-
-if (!canvas) {
-  console.error("canvasが見つかりません（id確認）");
-}
-
 const ctx = canvas.getContext("2d");
 
 const SIZE = 8;
@@ -22,7 +17,6 @@ board[4][4] = 2;
 
 let current = 1;
 
-// 8方向
 const dirs = [
   [-1,-1],[-1,0],[-1,1],
   [0,-1],        [0,1],
@@ -34,23 +28,23 @@ function inRange(x, y){
 }
 
 function getFlips(x, y, player){
-  if (board[y][x] !== 0) return [];
+  if(board[y][x] !== 0) return [];
 
   const opponent = player === 1 ? 2 : 1;
   let flips = [];
 
-  for (const [dx, dy] of dirs) {
+  for(const [dx, dy] of dirs){
     let nx = x + dx;
     let ny = y + dy;
     let line = [];
 
-    while (inRange(nx, ny) && board[ny][nx] === opponent) {
+    while(inRange(nx, ny) && board[ny][nx] === opponent){
       line.push([nx, ny]);
       nx += dx;
       ny += dy;
     }
 
-    if (inRange(nx, ny) && board[ny][nx] === player && line.length > 0) {
+    if(inRange(nx, ny) && board[ny][nx] === player && line.length > 0){
       flips = flips.concat(line);
     }
   }
@@ -58,13 +52,15 @@ function getFlips(x, y, player){
   return flips;
 }
 
-function draw() {
+function draw(){
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // グリッド
+  // =========================
+  // 線（グリッド）
+  // =========================
   ctx.strokeStyle = "black";
 
-  for (let i = 0; i <= SIZE; i++) {
+  for(let i = 0; i <= SIZE; i++){
     ctx.beginPath();
     ctx.moveTo(i * CELL, 0);
     ctx.lineTo(i * CELL, canvas.height);
@@ -76,23 +72,34 @@ function draw() {
     ctx.stroke();
   }
 
-  // 星（中央4点）
+  // =========================
+  // 星（自然見え版：セル中心）
+  // =========================
   const stars = [
     [2,2],[2,5],
     [5,2],[5,5]
   ];
 
   ctx.fillStyle = "black";
-  for (const [x,y] of stars) {
+
+  for(const [x,y] of stars){
     ctx.beginPath();
-    ctx.arc(x * CELL, y * CELL, 3, 0, Math.PI * 2);
+    ctx.arc(
+      x * CELL + CELL / 2,
+      y * CELL + CELL / 2,
+      3,
+      0,
+      Math.PI * 2
+    );
     ctx.fill();
   }
 
+  // =========================
   // 駒
-  for (let y = 0; y < SIZE; y++) {
-    for (let x = 0; x < SIZE; x++) {
-      if (board[y][x] === 0) continue;
+  // =========================
+  for(let y = 0; y < SIZE; y++){
+    for(let x = 0; x < SIZE; x++){
+      if(board[y][x] === 0) continue;
 
       ctx.beginPath();
       ctx.arc(
@@ -119,11 +126,11 @@ canvas.addEventListener("click", (e) => {
 
   const flips = getFlips(x, y, current);
 
-  if (flips.length === 0) return;
+  if(flips.length === 0) return;
 
   board[y][x] = current;
 
-  for (const [fx, fy] of flips) {
+  for(const [fx, fy] of flips){
     board[fy][fx] = current;
   }
 
