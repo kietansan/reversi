@@ -1,18 +1,11 @@
 // =====================
 // 少し強いCPU
 //
-// 優先順位
-// 1. 角
-// 2. 多く取れる
-//
-// 入力:
-// board
-//
-// 出力:
-// [x,y]
+// 1. 角優先
+// 2. 最大反転
 // =====================
 
-function cpuMove(board){
+function cpuMove2(board){
 
   const SIZE = 8;
 
@@ -83,10 +76,7 @@ function cpuMove(board){
     return null;
   }
 
-  // =====================
   // 角優先
-  // =====================
-
   const corners = [
     [0,0],
     [0,7],
@@ -104,10 +94,7 @@ function cpuMove(board){
     }
   }
 
-  // =====================
-  // 最大反転数
-  // =====================
-
+  // 最大反転
   moves.sort((a,b)=>b.score-a.score);
 
   return [moves[0].x,moves[0].y];
