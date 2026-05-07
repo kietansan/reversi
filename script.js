@@ -1,34 +1,31 @@
 const SIZE = 8;
 const POINTS = SIZE + 1; // 9×9交点
 
-// 交点ベース盤面
-// 0:空, 1:黒, 2:白
 let board = Array.from({ length: POINTS }, () =>
   Array(POINTS).fill(0)
 );
 
-// 初期配置（中央4点）
+// 正しい初期配置（中央4交点）
+board[3][3] = 2;
+board[3][4] = 1;
+board[4][3] = 1;
 board[4][4] = 2;
-board[4][5] = 1;
-board[5][4] = 1;
-board[5][5] = 2;
 
 let current = 1;
 
 const boardEl = document.getElementById("board");
 
-// 8方向
 const dirs = [
   [-1,-1],[-1,0],[-1,1],
   [0,-1],        [0,1],
   [1,-1],[1,0],[1,1]
 ];
 
+// 交点範囲チェック
 function inRange(x, y){
   return x >= 0 && x < POINTS && y >= 0 && y < POINTS;
 }
 
-// 反転チェック
 function getFlips(x, y, player){
   if(board[y][x] !== 0) return [];
 
@@ -57,19 +54,15 @@ function getFlips(x, y, player){
 function render(){
   boardEl.innerHTML = "";
 
-  // マス描画（8×8）
+  // 8×8マス描画（交点ベース）
   for(let y = 0; y < SIZE; y++){
     for(let x = 0; x < SIZE; x++){
 
       const cell = document.createElement("div");
       cell.className = "cell";
 
-      // 交点は (x,y) → (x,y)ではなく (x,y)〜(x+1,y+1)
-      const px = x;
-      const py = y;
-
-      // 石は右下交点に持たせる
-      const val = board[py][px];
+      // ★交点は「左上交点」を基準にする
+      const val = board[y][x];
 
       if(val !== 0){
         const disc = document.createElement("div");
@@ -78,11 +71,11 @@ function render(){
       }
 
       cell.onclick = () => {
-        const flips = getFlips(px, py, current);
+        const flips = getFlips(x, y, current);
 
         if(flips.length === 0) return;
 
-        board[py][px] = current;
+        board[y][x] = current;
 
         for(const [fx, fy] of flips){
           board[fy][fx] = current;
