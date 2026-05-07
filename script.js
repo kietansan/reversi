@@ -1,148 +1,144 @@
-const canvas = document.getElementById("board");
-const ctx = canvas.getContext("2d");
+const SIZE = 13;
 
-const SIZE = 8;
-const CELL = canvas.width / SIZE;
+let board = [];
+let gameOver = false;
 
-// =====================
-// 盤面（8×8マス）
-// =====================
-let board = Array.from({ length: SIZE }, () =>
-  Array(SIZE).fill(0)
-);
+const boardEl = document.getElementById("board");
+const infoEl = document.getElementById("info");
+const putSound = document.getElementById("putSound");
 
-// 初期配置
-board[3][3] = 2;
-board[3][4] = 1;
-board[4][3] = 1;
-board[4][4] = 2;
+const DIRS = [[1,0],[0,1],[1,1],[1,-1]];
 
-let current = 1;
+const BOARD_SIZE = 420;
+const STEP = BOARD_SIZE / (SIZE - 1);
 
-// 8方向
-const dirs = [
-  [-1,-1],[-1,0],[-1,1],
-  [0,-1],        [0,1],
-  [1,-1],[1,0],[1,1]
-];
+/* ========================= */
+function init(){
 
-function inRange(x,y){
-  return x>=0 && x<SIZE && y>=0 && y<SIZE;
+  boardEl.innerHTML = "";
+
+  board = Array.from({length: SIZE}, () =>
+    Array(SIZE).fill(0)
+  );
+
+  gameOver = false;
+  infoEl.textContent = "あなたの番です";
+
+  drawPoints();
 }
+window.init = init;
 
-function getFlips(x,y,player){
-  if(board[y][x] !== 0) return [];
+/* ========================= */
+function drawPoints(){
 
-  const opponent = player === 1 ? 2 : 1;
-  let flips = [];
-
-  for(const [dx,dy] of dirs){
-    let nx = x + dx;
-    let ny = y + dy;
-    let line = [];
-
-    while(inRange(nx,ny) && board[ny][nx] === opponent){
-      line.push([nx,ny]);
-      nx += dx;
-      ny += dy;
-    }
-
-    if(inRange(nx,ny) && board[ny][nx] === player && line.length > 0){
-      flips = flips.concat(line);
-    }
-  }
-
-  return flips;
-}
-
-function draw(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-
-  // =====================
-  // グリッド（交点ベース）
-  // =====================
-  ctx.strokeStyle = "black";
-
-  for(let i=0;i<=SIZE;i++){
-    ctx.beginPath();
-    ctx.moveTo(i*CELL,0);
-    ctx.lineTo(i*CELL,canvas.height);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(0,i*CELL);
-    ctx.lineTo(canvas.width,i*CELL);
-    ctx.stroke();
-  }
-
-  // =====================
-  // 星（交点固定）
-  // (2,2)(2,6)(6,2)(6,6)
-  // =====================
-  const stars = [
-    [2,2],[2,6],
-    [6,2],[6,6]
-  ];
-
-  ctx.fillStyle = "black";
-
-  for(const [x,y] of stars){
-    ctx.beginPath();
-    ctx.arc(
-      x * CELL,
-      y * CELL,
-      3,
-      0,
-      Math.PI * 2
-    );
-    ctx.fill();
-  }
-
-  // =====================
-  // 駒（セル中心）
-  // =====================
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
-      if(board[y][x] === 0) continue;
 
-      ctx.beginPath();
-      ctx.arc(
-        x * CELL + CELL/2,
-        y * CELL + CELL/2,
-        CELL * 0.4,
-        0,
-        Math.PI * 2
-      );
+      const p = document.createElement("div");
+      p.className = "point";
 
-      ctx.fillStyle = board[y][x] === 1 ? "black" : "white";
-      ctx.fill();
-      ctx.stroke();
+      p.style.left = (x * STEP) + "px";
+      p.style.top  = (y * STEP) + "px";
+
+      p.onclick = () => click(x,y);
+
+      boardEl.appendChild(p);
     }
   }
 }
 
-// =====================
-// クリック処理
-// =====================
-canvas.addEventListener("click",(e)=>{
-  const rect = canvas.getBoundingClientRect();
+/* ========================= */
+function click(x,y){
 
-  const x = Math.floor((e.clientX - rect.left)/CELL);
-  const y = Math.floor((e.clientY - rect.top)/CELL);
+  if(gameOver) return;
+  if(board[y][x]) return;
 
-  const flips = getFlips(x,y,current);
+  place(x,y,1);
 
-  if(flips.length === 0) return;
+  setTimeout(cpuMove,50);
+}
 
-  board[y][x] = current;
+/* ========================= */
+function playSound(){
+  putSound.currentTime = 0;
+  putSound.play().catch(()=>{});
+}
 
-  for(const [fx,fy] of flips){
-    board[fy][fx] = current;
+/* ========================= */
+function place(x,y,p){
+
+  board[y][x] = p;
+
+  playSound(); // ★音
+
+  render();
+
+  if(checkWin(x,y,p)){
+    gameOver = true;
+    infoEl.textContent = p===1 ? "あなたの勝ち" : "CPUの勝ち";
+  }
+}
+
+/* ========================= */
+function render(){
+
+  document.querySelectorAll(".stone").forEach(e=>e.remove());
+
+  const points = document.querySelectorAll(".point");
+
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+
+      if(board[y][x]===0) continue;
+
+      const idx = y*SIZE + x;
+      const base = points[idx];
+
+      const stone = document.createElement("div");
+      stone.className = "stone " + (board[y][x]===1 ? "black":"white");
+
+      base.appendChild(stone);
+    }
+  }
+}
+
+/* ========================= */
+function checkWin(x,y,p){
+
+  for(const [dx,dy] of DIRS){
+
+    let c=1;
+
+    for(const d of [-1,1]){
+
+      let nx=x+dx*d;
+      let ny=y+dy*d;
+
+      while(board[ny]?.[nx]===p){
+        c++;
+        nx+=dx*d;
+        ny+=dy*d;
+      }
+    }
+
+    if(c>=5) return true;
   }
 
-  current = current === 1 ? 2 : 1;
+  return false;
+}
 
-  draw();
-});
+/* ========================= */
+function cpuMove(){
 
-draw();
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+
+      if(!board[y][x]){
+        place(x,y,2);
+        return;
+      }
+    }
+  }
+}
+
+init();
