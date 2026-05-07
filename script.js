@@ -22,7 +22,6 @@ const SIZE = 8;
 
 let boardSize;
 let cellSize;
-let offset;
 
 let currentPlayer = BLACK;
 
@@ -62,11 +61,7 @@ function resizeCanvas(){
 
   boardSize = canvas.width;
 
-  // 8マス
-  cellSize = boardSize / 8;
-
-  // 外周余白
-  offset = cellSize / 2;
+  cellSize = boardSize / SIZE;
 
   draw();
 }
@@ -214,22 +209,22 @@ function draw(){
   ctx.strokeStyle = "#000000";
   ctx.lineWidth = 2;
 
-  for(let i=0;i<SIZE;i++){
+  for(let i=0;i<=SIZE;i++){
 
     const pos =
-      offset + i * cellSize;
+      i * cellSize;
 
     // 横線
 
     ctx.beginPath();
 
     ctx.moveTo(
-      offset,
+      0,
       pos
     );
 
     ctx.lineTo(
-      boardSize - offset,
+      boardSize,
       pos
     );
 
@@ -241,19 +236,19 @@ function draw(){
 
     ctx.moveTo(
       pos,
-      offset
+      0
     );
 
     ctx.lineTo(
       pos,
-      boardSize - offset
+      boardSize
     );
 
     ctx.stroke();
   }
 
   // =====================
-  // 星（交点）
+  // 星
   // =====================
 
   const stars = [
@@ -268,10 +263,12 @@ function draw(){
   for(const [sx,sy] of stars){
 
     const px =
-      offset + sx * cellSize;
+      sx * cellSize
+      + cellSize / 2;
 
     const py =
-      offset + sy * cellSize;
+      sy * cellSize
+      + cellSize / 2;
 
     ctx.beginPath();
 
@@ -302,10 +299,12 @@ function draw(){
       }
 
       const cx =
-        offset + x * cellSize;
+        x * cellSize
+        + cellSize / 2;
 
       const cy =
-        offset + y * cellSize;
+        y * cellSize
+        + cellSize / 2;
 
       const r =
         cellSize * 0.36;
@@ -497,23 +496,21 @@ function handleInput(e){
   const clientY =
     e.clientY;
 
-  const x = Math.round(
+  const x = Math.floor(
 
     (
       clientX
       - rect.left
-      - offset
     )
 
     / cellSize
   );
 
-  const y = Math.round(
+  const y = Math.floor(
 
     (
       clientY
       - rect.top
-      - offset
     )
 
     / cellSize
