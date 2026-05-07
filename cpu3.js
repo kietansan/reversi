@@ -279,6 +279,25 @@ function cpuMove3(board){
 
   function evaluate(state){
 
+    // =====================
+    // 終局評価
+    // =====================
+
+    if(isGameOver(state)){
+
+      const { black, white } = countPieces(state);
+
+      if(white > black){
+        return 999999;
+      }
+
+      if(black > white){
+        return -999999;
+      }
+
+      return 0;
+    }
+
     return (
       boardScore(state) +
       cornerScore(state) +
@@ -395,20 +414,48 @@ function cpuMove3(board){
   // 探索深さ
   // =====================
 
-  let depth = 5;
+  let depth = 7;
 
   const empties = emptyCount(board);
 
-  // 終盤強化
-  if(empties <= 12){
+  // 中盤強化
+  if(empties <= 24){
     depth = 8;
   }
 
-  if(empties <= 8){
+  // 終盤強化
+  if(empties <= 18){
     depth = 10;
   }
 
-  const moves = getMoves(board,WHITE);
+  // 準完全読み
+  if(empties <= 12){
+    depth = 12;
+  }
+
+  // 完全読みに近づける
+  if(empties <= 8){
+    depth = 14;
+  }
+
+  let moves = getMoves(board,WHITE);
+
+  // =====================
+  // 手順並べ替え
+  // =====================
+
+  moves.sort((a,b)=>{
+
+    const sa =
+      evalBoard[a.y][a.x] +
+      a.flips.length * 2;
+
+    const sb =
+      evalBoard[b.y][b.x] +
+      b.flips.length * 2;
+
+    return sb - sa;
+  });
 
   if(moves.length === 0){
     return null;
