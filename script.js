@@ -1,12 +1,13 @@
 const canvas = document.getElementById("board");
 const ctx = canvas.getContext("2d");
 
+// 🔊 音
+const putSound = document.getElementById("putSound");
+
 const SIZE = 8;
 const CELL = canvas.width / SIZE;
 
-// =====================
-// 盤面（8×8マス）
-// =====================
+// 盤面
 let board = Array.from({ length: SIZE }, () =>
   Array(SIZE).fill(0)
 );
@@ -58,9 +59,7 @@ function getFlips(x,y,player){
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // =====================
-  // グリッド（交点ベース）
-  // =====================
+  // グリッド
   ctx.strokeStyle = "black";
 
   for(let i=0;i<=SIZE;i++){
@@ -75,10 +74,7 @@ function draw(){
     ctx.stroke();
   }
 
-  // =====================
-  // 星（交点固定）
-  // (2,2)(2,6)(6,2)(6,6)
-  // =====================
+  // 星（固定）
   const stars = [
     [2,2],[2,6],
     [6,2],[6,6]
@@ -89,29 +85,27 @@ function draw(){
   for(const [x,y] of stars){
     ctx.beginPath();
     ctx.arc(
-      x * CELL,
-      y * CELL,
+      x*CELL,
+      y*CELL,
       3,
       0,
-      Math.PI * 2
+      Math.PI*2
     );
     ctx.fill();
   }
 
-  // =====================
-  // 駒（セル中心）
-  // =====================
+  // 駒
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
       if(board[y][x] === 0) continue;
 
       ctx.beginPath();
       ctx.arc(
-        x * CELL + CELL/2,
-        y * CELL + CELL/2,
-        CELL * 0.4,
+        x*CELL + CELL/2,
+        y*CELL + CELL/2,
+        CELL*0.4,
         0,
-        Math.PI * 2
+        Math.PI*2
       );
 
       ctx.fillStyle = board[y][x] === 1 ? "black" : "white";
@@ -121,9 +115,6 @@ function draw(){
   }
 }
 
-// =====================
-// クリック処理
-// =====================
 canvas.addEventListener("click",(e)=>{
   const rect = canvas.getBoundingClientRect();
 
@@ -139,6 +130,10 @@ canvas.addEventListener("click",(e)=>{
   for(const [fx,fy] of flips){
     board[fy][fx] = current;
   }
+
+  // 🔊 音再生
+  putSound.currentTime = 0;
+  putSound.play();
 
   current = current === 1 ? 2 : 1;
 
