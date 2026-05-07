@@ -5,10 +5,10 @@ let gameOver = false;
 
 const boardEl = document.getElementById("board");
 const infoEl = document.getElementById("info");
-const putSound = document.getElementById("putSound");
 
 const DIRS = [[1,0],[0,1],[1,1],[1,-1]];
 
+/* ★重要：盤サイズと完全一致させる */
 const BOARD_SIZE = 420;
 const STEP = BOARD_SIZE / (SIZE - 1);
 
@@ -59,23 +59,15 @@ function click(x,y){
 }
 
 /* ========================= */
-function playSound(){
-  putSound.currentTime = 0;
-  putSound.play().catch(()=>{});
-}
-
-/* ========================= */
 function place(x,y,p){
 
   board[y][x] = p;
-
-  playSound(); // ★音
 
   render();
 
   if(checkWin(x,y,p)){
     gameOver = true;
-    infoEl.textContent = p===1 ? "あなたの勝ち" : "CPUの勝ち";
+    infoEl.textContent = p===1?"あなたの勝ち":"CPUの勝ち";
   }
 }
 
@@ -95,7 +87,7 @@ function render(){
       const base = points[idx];
 
       const stone = document.createElement("div");
-      stone.className = "stone " + (board[y][x]===1 ? "black":"white");
+      stone.className = "stone " + (board[y][x]===1?"black":"white");
 
       base.appendChild(stone);
     }
