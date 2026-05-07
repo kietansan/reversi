@@ -20,11 +20,17 @@ const dirs = [
   [1,-1],[1,0],[1,1]
 ];
 
+// 星（標準4点）
+const stars = new Set([
+  "2,2","2,5",
+  "5,2","5,5"
+]);
+
 function inRange(x, y){
   return x >= 0 && x < SIZE && y >= 0 && y < SIZE;
 }
 
-// 裏返せる駒リスト取得
+// 反転可能リスト取得
 function getFlips(x, y, player){
   if(board[y][x] !== 0) return [];
 
@@ -58,12 +64,19 @@ function render(){
       const cell = document.createElement("div");
       cell.className = "cell";
 
+      // 星マーク
+      if(stars.has(`${x},${y}`)){
+        cell.classList.add("star");
+      }
+
+      // 石
       if(board[y][x] !== 0){
         const disc = document.createElement("div");
         disc.className = "disc " + (board[y][x] === 1 ? "black" : "white");
         cell.appendChild(disc);
       }
 
+      // クリック処理
       cell.onclick = () => {
         const flips = getFlips(x, y, current);
 
