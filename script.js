@@ -14,6 +14,12 @@ const CELL = BOARD_SIZE / SIZE;
 
 let animating = false;
 
+// =====================
+// 最初の着手済み
+// =====================
+
+let gameStarted = false;
+
 let board;
 
 initBoard();
@@ -340,6 +346,17 @@ function applyMove(x,y,player){
 
   board[y][x] = player;
 
+  // =====================
+  // 最初の着手で固定
+  // =====================
+
+  if(!gameStarted){
+
+    gameStarted = true;
+
+    cpuSelect.disabled = true;
+  }
+
   putSound.currentTime = 0;
   putSound.play();
 
@@ -449,6 +466,11 @@ restartBtn.addEventListener("click",()=>{
   current = 1;
 
   animating = false;
+
+  // 難易度再選択可能
+  gameStarted = false;
+
+  cpuSelect.disabled = false;
 
   draw();
   updateInfo();
