@@ -20,6 +20,17 @@ initBoard();
 let current = 1;
 
 // =====================
+// 使用CPU
+//
+// cpu.js  → 簡単
+// cpu2.js → 少し強い
+// =====================
+
+// cpu2.js を読み込む場合も
+// 関数名は cpuMove のまま
+// 自動で切り替わる
+
+// =====================
 // 8方向
 // =====================
 const dirs = [
@@ -211,7 +222,7 @@ function draw(){
     ctx.stroke();
   }
 
-  // 星（交点）
+  // 星
   const stars = [
     [2,2],[2,6],
     [6,2],[6,6]
@@ -323,7 +334,7 @@ function updateInfo(){
 // =====================
 // 着手
 // =====================
-function applyMove(x,y,player,next){
+function applyMove(x,y,player){
 
   const flips = getFlips(x,y,player);
 
@@ -364,17 +375,12 @@ function applyMove(x,y,player,next){
 
     updateInfo();
 
-    // =====================
-    // CPU継続
-    // =====================
-
+    // CPUターン
     if(current === 2){
 
       setTimeout(cpuTurn,200);
 
     }
-
-    if(next) next();
   });
 }
 
@@ -410,7 +416,7 @@ canvas.addEventListener("click",(e)=>{
 
   if(animating) return;
 
-  // 黒のみ操作
+  // 黒のみ
   if(current !== 1) return;
 
   const rect = canvas.getBoundingClientRect();
