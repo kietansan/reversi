@@ -2,14 +2,15 @@ const canvas = document.getElementById("board");
 const ctx = canvas.getContext("2d");
 
 const SIZE = 8;
+const GRID = SIZE + 1; // 9×9交点
 const CELL = canvas.width / SIZE;
 
 // 0:空 1:黒 2:白
-let board = Array.from({ length: SIZE }, () =>
-  Array(SIZE).fill(0)
+let board = Array.from({ length: GRID }, () =>
+  Array(GRID).fill(0)
 );
 
-// 初期配置（中央4つ）
+// 初期配置（交点ベースの中央4点）
 board[3][3] = 2;
 board[3][4] = 1;
 board[4][3] = 1;
@@ -24,7 +25,7 @@ const dirs = [
 ];
 
 function inRange(x, y){
-  return x >= 0 && x < SIZE && y >= 0 && y < SIZE;
+  return x >= 0 && x < GRID && y >= 0 && y < GRID;
 }
 
 function getFlips(x, y, player){
@@ -56,7 +57,7 @@ function draw(){
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   // =========================
-  // 線（グリッド）
+  // グリッド（交点基準）
   // =========================
   ctx.strokeStyle = "black";
 
@@ -73,7 +74,7 @@ function draw(){
   }
 
   // =========================
-  // 星（自然見え版：セル中心）
+  // 星（交点4点）
   // =========================
   const stars = [
     [2,2],[2,5],
@@ -85,8 +86,8 @@ function draw(){
   for(const [x,y] of stars){
     ctx.beginPath();
     ctx.arc(
-      x * CELL + CELL / 2,
-      y * CELL + CELL / 2,
+      x * CELL,
+      y * CELL,
       3,
       0,
       Math.PI * 2
@@ -95,17 +96,17 @@ function draw(){
   }
 
   // =========================
-  // 駒
+  // 駒（交点中心）
   // =========================
-  for(let y = 0; y < SIZE; y++){
-    for(let x = 0; x < SIZE; x++){
+  for(let y = 0; y < GRID; y++){
+    for(let x = 0; x < GRID; x++){
       if(board[y][x] === 0) continue;
 
       ctx.beginPath();
       ctx.arc(
-        x * CELL + CELL / 2,
-        y * CELL + CELL / 2,
-        CELL * 0.4,
+        x * CELL,
+        y * CELL,
+        CELL * 0.35,
         0,
         Math.PI * 2
       );
@@ -121,8 +122,8 @@ function draw(){
 canvas.addEventListener("click", (e) => {
   const rect = canvas.getBoundingClientRect();
 
-  const x = Math.floor((e.clientX - rect.left) / CELL);
-  const y = Math.floor((e.clientY - rect.top) / CELL);
+  const x = Math.round((e.clientX - rect.left) / CELL);
+  const y = Math.round((e.clientY - rect.top) / CELL);
 
   const flips = getFlips(x, y, current);
 
