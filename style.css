@@ -1,13 +1,26 @@
-body {
-  margin: 0;
-  height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: white;
+body{
+  margin:0;
+  height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  background:white;
+  font-family:sans-serif;
 }
 
-canvas {
-  border: 4px solid black;
-  background: #2e7d32;
+.wrap{
+  text-align:center;
+}
+
+#info{
+  margin-bottom:14px;
+  font-size:28px;
+}
+
+canvas{
+  background:#3f7a44;
+  border:4px solid black;
+
+  box-shadow:
+    0 4px 12px rgba(0,0,0,0.35);
 }
