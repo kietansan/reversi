@@ -1,7 +1,6 @@
 // =====================
-// 最も簡単なCPU
-// boardのみ受け取る
-// [x,y] を返す
+// 簡単CPU
+// 最初の合法手
 // =====================
 
 function cpuMove(board){
@@ -53,7 +52,6 @@ function cpuMove(board){
     return flips;
   }
 
-  // 最初に見つけた合法手
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
 
