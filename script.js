@@ -3,6 +3,7 @@ const ctx = canvas.getContext("2d");
 
 const info = document.getElementById("info");
 const putSound = document.getElementById("putSound");
+const restartBtn = document.getElementById("restartBtn");
 
 const SIZE = 8;
 const PADDING = 40;
@@ -12,21 +13,9 @@ const CELL = BOARD_SIZE / SIZE;
 
 let animating = false;
 
-// =====================
-// 盤面
-// 0 = 空
-// 1 = 黒
-// 2 = 白
-// =====================
-let board = Array.from({ length: SIZE }, () =>
-  Array(SIZE).fill(0)
-);
+let board;
 
-// 初期配置
-board[3][3] = 2;
-board[3][4] = 1;
-board[4][3] = 1;
-board[4][4] = 2;
+initBoard();
 
 let current = 1;
 
@@ -35,6 +24,18 @@ const dirs = [
   [0,-1],        [0,1],
   [1,-1],[1,0],[1,1]
 ];
+
+function initBoard(){
+
+  board = Array.from({ length: SIZE }, () =>
+    Array(SIZE).fill(0)
+  );
+
+  board[3][3] = 2;
+  board[3][4] = 1;
+  board[4][3] = 1;
+  board[4][4] = 2;
+}
 
 function inRange(x,y){
   return x>=0 && x<SIZE && y>=0 && y<SIZE;
@@ -162,13 +163,9 @@ function drawPiece(x,y,color,scale=1){
   ctx.stroke();
 }
 
-function draw(scaleX=null,scaleY=null,scale=1,newColor=1){
+function draw(){
 
   ctx.clearRect(0,0,canvas.width,canvas.height);
-
-  // =====================
-  // グリッド
-  // =====================
 
   ctx.lineWidth = 1;
   ctx.strokeStyle = "black";
@@ -187,10 +184,6 @@ function draw(scaleX=null,scaleY=null,scale=1,newColor=1){
     ctx.lineTo(PADDING + BOARD_SIZE,pos);
     ctx.stroke();
   }
-
-  // =====================
-  // 星
-  // =====================
 
   const stars = [
     [2,2],[2,6],
@@ -214,29 +207,17 @@ function draw(scaleX=null,scaleY=null,scale=1,newColor=1){
     ctx.fill();
   }
 
-  // =====================
-  // 駒
-  // =====================
-
   for(let y=0;y<SIZE;y++){
     for(let x=0;x<SIZE;x++){
 
       if(board[y][x] === 0) continue;
 
-      if(x === scaleX && y === scaleY){
-
-        drawPiece(x,y,newColor,scale);
-
-      }else{
-
-        drawPiece(x,y,board[y][x]);
-
-      }
+      drawPiece(x,y,board[y][x]);
     }
   }
 }
 
-function animateFlip(flips,newColor){
+function animateFlip(flips,newColor,callback){
 
   let frame = 0;
 
@@ -254,7 +235,6 @@ function animateFlip(flips,newColor){
     draw();
 
     for(const [x,y] of flips){
-
       drawPiece(x,y,newColor,s);
     }
 
@@ -271,6 +251,8 @@ function animateFlip(flips,newColor){
       animating = false;
 
       draw();
+
+      if(callback) callback();
     }
   }
 
@@ -294,18 +276,62 @@ function updateInfo(){
     }
 
     info.textContent =
-      `終了　黒:${black} 白:${white}　${result}`;
+      `終了 黒:${black} 白:${white} ${result}`;
 
     return;
   }
 
   info.textContent =
-    `${current === 1 ? "黒" : "白"}の番　黒:${black} 白:${white}`;
+    `${current === 1 ? "黒" : "白"}の番 黒:${black} 白:${white}`;
+}
+
+function applyMove(x,y,player,next){
+
+  const flips = getFlips(x,y,player);
+
+  if(flips.length === 0) return;
+
+  board[y][x] = player;
+
+  putSound.currentTime = 0;
+  putSound.play();
+
+  animateFlip(flips,player,()=>{
+
+    current = current === 1 ? 2 : 1;
+
+    updateInfo();
+
+    if(next) next();
+  });
+}
+
+function cpuTurn(){
+
+  if(current !== 2) return;
+
+  const move = cpuMove(board);
+
+  if(!move){
+
+    current = 1;
+    updateInfo();
+    return;
+  }
+
+  const [x,y] = move;
+
+  setTimeout(()=>{
+
+    applyMove(x,y,2);
+
+  },300);
 }
 
 canvas.addEventListener("click",(e)=>{
 
   if(animating) return;
+  if(current !== 1) return;
 
   const rect = canvas.getBoundingClientRect();
 
@@ -317,32 +343,27 @@ canvas.addEventListener("click",(e)=>{
 
   if(!inRange(x,y)) return;
 
-  const flips = getFlips(x,y,current);
+  const flips = getFlips(x,y,1);
 
   if(flips.length === 0) return;
 
-  board[y][x] = current;
+  applyMove(x,y,1,()=>{
 
-  putSound.currentTime = 0;
-  putSound.play();
+    setTimeout(cpuTurn,200);
 
-  animateFlip(flips,current);
+  });
+});
 
-  current = current === 1 ? 2 : 1;
+restartBtn.addEventListener("click",()=>{
 
+  initBoard();
+
+  current = 1;
+
+  animating = false;
+
+  draw();
   updateInfo();
-
-  setTimeout(()=>{
-
-    if(!hasMove(current)){
-
-      current = current === 1 ? 2 : 1;
-
-      updateInfo();
-    }
-
-  },250);
-
 });
 
 draw();
