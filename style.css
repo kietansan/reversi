@@ -1,28 +1,27 @@
 body{
   margin:0;
   height:100vh;
+
   display:flex;
   justify-content:center;
   align-items:center;
 
   font-family:sans-serif;
 
-  /* 背景 */
-  background-image: url("2.png");
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background-image:url("2.png");
+  background-size:cover;
+  background-position:center;
+  background-repeat:no-repeat;
 
-  /* 少し暗くして盤面を見やすく */
-  position: relative;
+  position:relative;
 }
 
-/* 背景の暗幕（重要：視認性UP） */
+/* 暗幕 */
 body::before{
   content:"";
   position:absolute;
   inset:0;
-  background: rgba(0,0,0,0.35);
+  background:rgba(0,0,0,0.35);
   z-index:0;
 }
 
@@ -32,13 +31,12 @@ body::before{
 
   text-align:center;
 
-  /* 盤面の読みやすさ確保 */
-  background: rgba(255,255,255,0.78);
+  background:rgba(255,255,255,0.78);
   padding:18px 22px;
   border-radius:14px;
 
-  box-shadow: 0 8px 24px rgba(0,0,0,0.35);
-  backdrop-filter: blur(4px);
+  box-shadow:0 8px 24px rgba(0,0,0,0.35);
+  backdrop-filter:blur(4px);
 }
 
 #info{
@@ -48,7 +46,6 @@ body::before{
   color:#222;
 }
 
-/* 操作部分 */
 .controls{
   margin-bottom:10px;
 }
@@ -66,8 +63,36 @@ select, button{
 canvas{
   background:#3f7a44;
   border:4px solid black;
-
   border-radius:8px;
+  box-shadow:0 6px 18px rgba(0,0,0,0.4);
+}
 
-  box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+/* 📱スマホ対応（崩さない最小構成） */
+@media (max-width: 600px){
+
+  body{
+    align-items:flex-start;
+    padding:10px;
+  }
+
+  .wrap{
+    width:100%;
+    max-width:420px;
+    padding:14px;
+  }
+
+  canvas{
+    width:100%;
+    height:auto;
+    display:block;
+  }
+
+  #info{
+    font-size:20px;
+  }
+
+  select, button{
+    font-size:13px;
+    padding:6px 8px;
+  }
 }
