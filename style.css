@@ -4,23 +4,70 @@ body{
   display:flex;
   justify-content:center;
   align-items:center;
-  background:white;
+
   font-family:sans-serif;
+
+  /* 背景 */
+  background-image: url("2.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+
+  /* 少し暗くして盤面を見やすく */
+  position: relative;
+}
+
+/* 背景の暗幕（重要：視認性UP） */
+body::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background: rgba(0,0,0,0.35);
+  z-index:0;
 }
 
 .wrap{
+  position:relative;
+  z-index:1;
+
   text-align:center;
+
+  /* 盤面の読みやすさ確保 */
+  background: rgba(255,255,255,0.78);
+  padding:18px 22px;
+  border-radius:14px;
+
+  box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+  backdrop-filter: blur(4px);
 }
 
 #info{
   margin-bottom:14px;
   font-size:28px;
+  font-weight:bold;
+  color:#222;
 }
 
+/* 操作部分 */
+.controls{
+  margin-bottom:10px;
+}
+
+select, button{
+  font-size:14px;
+  padding:6px 10px;
+  margin:0 4px;
+  border-radius:6px;
+  border:1px solid #aaa;
+  cursor:pointer;
+}
+
+/* 盤面 */
 canvas{
   background:#3f7a44;
   border:4px solid black;
 
-  box-shadow:
-    0 4px 12px rgba(0,0,0,0.35);
+  border-radius:8px;
+
+  box-shadow: 0 6px 18px rgba(0,0,0,0.4);
 }
