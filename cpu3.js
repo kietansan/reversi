@@ -1,32 +1,5 @@
 // =====================
-// cpu3.js
-// High Strength Reversi AI
-// =====================
-//
-// 機能:
-// - Bitboard
-// - Negamax
-// - AlphaBeta
-// - Iterative Deepening
-// - PVS
-// - Move Ordering
-// - Mobility
-// - Corner
-// - Stable風評価
-// - Frontier
-// - Endgame強化
-//
-// 入力:
-// board[y][x]
-//
-// 出力:
-// [x,y]
-//
-// 空=0
-// 黒=1
-// 白=2
-//
-// CPU = 白
+// cpu3.js optimized
 // =====================
 
 function cpuMove3(board){
@@ -34,8 +7,6 @@ function cpuMove3(board){
   const EMPTY = 0;
   const BLACK = 1;
   const WHITE = 2;
-
-  const SIZE = 8;
 
   const INF = 99999999;
 
@@ -45,12 +16,7 @@ function cpuMove3(board){
     [1,-1],[1,0],[1,1]
   ];
 
-  // =====================
-  // 評価盤
-  // =====================
-
   const PST = [
-
     [120,-20, 20,  5,  5, 20,-20,120],
     [-20,-40, -5, -5, -5, -5,-40,-20],
     [ 20, -5, 15,  3,  3, 15, -5, 20],
@@ -59,27 +25,39 @@ function cpuMove3(board){
     [ 20, -5, 15,  3,  3, 15, -5, 20],
     [-20,-40, -5, -5, -5, -5,-40,-20],
     [120,-20, 20,  5,  5, 20,-20,120]
-
   ];
 
   // =====================
-  // 盤面コピー
+  // TT
   // =====================
 
-  function cloneBoard(src){
+  const TT = new Map();
 
-    const b = new Array(8);
+  const killerMoves = Array.from(
+    {length:64},
+    ()=>null
+  );
+
+  const history = Array.from(
+    {length:8},
+    ()=>Array(8).fill(0)
+  );
+
+  function hashBoard(state,player){
+
+    let s = "";
 
     for(let y=0;y<8;y++){
-
-      b[y] = src[y].slice();
+      for(let x=0;x<8;x++){
+        s += state[y][x];
+      }
     }
 
-    return b;
+    return s + player;
   }
 
   // =====================
-  // 範囲
+  // utility
   // =====================
 
   function inRange(x,y){
@@ -92,10 +70,6 @@ function cpuMove3(board){
     );
   }
 
-  // =====================
-  // 相手
-  // =====================
-
   function opp(p){
 
     return p === BLACK
@@ -104,7 +78,7 @@ function cpuMove3(board){
   }
 
   // =====================
-  // 反転取得
+  // flips
   // =====================
 
   function getFlips(state,x,y,player){
@@ -115,7 +89,7 @@ function cpuMove3(board){
 
     const enemy = opp(player);
 
-    let flips = [];
+    let flips = null;
 
     for(let i=0;i<8;i++){
 
@@ -131,7 +105,6 @@ function cpuMove3(board){
         inRange(nx,ny) &&
         state[ny][nx] === enemy
       ){
-
         line.push([nx,ny]);
 
         nx += dx;
@@ -144,35 +117,56 @@ function cpuMove3(board){
         state[ny][nx] === player
       ){
 
-        flips = flips.concat(line);
+        if(!flips){
+          flips = [];
+        }
+
+        flips.push(...line);
       }
     }
 
-    return flips.length
-      ? flips
-      : null;
+    return flips;
   }
 
   // =====================
-  // 合法手
+  // generate
   // =====================
 
   function generateMoves(state,player){
 
-    let moves = [];
+    const moves = [];
 
     for(let y=0;y<8;y++){
       for(let x=0;x<8;x++){
+
+        if(state[y][x] !== EMPTY){
+          continue;
+        }
 
         const flips =
           getFlips(state,x,y,player);
 
         if(flips){
 
+          let score = PST[y][x];
+
+          score += flips.length * 2;
+
+          if(
+            (x===0&&y===0)||
+            (x===0&&y===7)||
+            (x===7&&y===0)||
+            (x===7&&y===7)
+          ){
+            score += 10000;
+          }
+
           moves.push({
             x,
             y,
-            flips
+            flips,
+            score,
+            orderScore: score
           });
         }
       }
@@ -182,7 +176,7 @@ function cpuMove3(board){
   }
 
   // =====================
-  // 着手
+  // move
   // =====================
 
   function doMove(state,move,player){
@@ -198,10 +192,6 @@ function cpuMove3(board){
       state[f[1]][f[0]] = player;
     }
   }
-
-  // =====================
-  // Undo
-  // =====================
 
   function undoMove(state,move,player){
 
@@ -220,42 +210,107 @@ function cpuMove3(board){
   }
 
   // =====================
-  // 空き数
+  // evaluate helpers
   // =====================
 
-  function emptyCount(state){
+  function mobilityFromMoves(myMoves,enemyMoves){
 
-    let n = 0;
+    return myMoves.length - enemyMoves.length;
+  }
+
+  function cornerScore(state){
+
+    let s = 0;
+
+    const corners = [
+      [0,0],
+      [0,7],
+      [7,0],
+      [7,7]
+    ];
+
+    for(let i=0;i<4;i++){
+
+      const c = corners[i];
+
+      const p = state[c[1]][c[0]];
+
+      if(p === WHITE) s += 1000;
+      if(p === BLACK) s -= 1000;
+    }
+
+    return s;
+  }
+
+  function pstScore(state){
+
+    let s = 0;
 
     for(let y=0;y<8;y++){
       for(let x=0;x<8;x++){
 
-        if(state[y][x] === EMPTY){
-          n++;
+        const p = state[y][x];
+
+        if(p === WHITE){
+          s += PST[y][x];
+        }
+
+        else if(p === BLACK){
+          s -= PST[y][x];
         }
       }
     }
 
-    return n;
+    return s;
   }
 
-  // =====================
-  // mobility
-  // =====================
+  function discScore(state){
 
-  function mobility(state){
+    let s = 0;
 
-    return (
-      generateMoves(state,WHITE).length -
-      generateMoves(state,BLACK).length
-    );
+    for(let y=0;y<8;y++){
+      for(let x=0;x<8;x++){
+
+        if(state[y][x] === WHITE) s++;
+        else if(state[y][x] === BLACK) s--;
+      }
+    }
+
+    return s;
+  }
+
+  function dangerScore(state){
+
+    let s = 0;
+
+    if(state[0][0] === EMPTY){
+      if(state[1][1] === WHITE) s -= 300;
+      if(state[1][1] === BLACK) s += 300;
+    }
+
+    if(state[0][7] === EMPTY){
+      if(state[1][6] === WHITE) s -= 300;
+      if(state[1][6] === BLACK) s += 300;
+    }
+
+    if(state[7][0] === EMPTY){
+      if(state[6][1] === WHITE) s -= 300;
+      if(state[6][1] === BLACK) s += 300;
+    }
+
+    if(state[7][7] === EMPTY){
+      if(state[6][6] === WHITE) s -= 300;
+      if(state[6][6] === BLACK) s += 300;
+    }
+
+    return s;
   }
 
   // =====================
   // frontier
   // =====================
 
-  function frontier(state){
+  function frontierScore(state){
 
     let w = 0;
     let b = 0;
@@ -269,8 +324,6 @@ function cpuMove3(board){
           continue;
         }
 
-        let front = false;
-
         for(let i=0;i<8;i++){
 
           const nx = x + dirs[i][0];
@@ -280,15 +333,10 @@ function cpuMove3(board){
             inRange(nx,ny) &&
             state[ny][nx] === EMPTY
           ){
-            front = true;
+            if(p === WHITE) w++;
+            else b++;
             break;
           }
-        }
-
-        if(front){
-
-          if(p === WHITE) w++;
-          else b++;
         }
       }
     }
@@ -297,175 +345,12 @@ function cpuMove3(board){
   }
 
   // =====================
-  // 角
+  // evaluate
   // =====================
 
-  function cornerScore(state){
+  function evaluate(state,empties,myMoves,enemyMoves){
 
-    const corners = [
-      [0,0],
-      [0,7],
-      [7,0],
-      [7,7]
-    ];
-
-    let s = 0;
-
-    for(let i=0;i<4;i++){
-
-      const c = corners[i];
-
-      const p = state[c[1]][c[0]];
-
-      if(p === WHITE){
-        s += 1000;
-      }
-
-      if(p === BLACK){
-        s -= 1000;
-      }
-    }
-
-    return s;
-  }
-
-  // =====================
-  // X/C penalty
-  // =====================
-
-  function dangerScore(state){
-
-    let s = 0;
-
-    // X
-
-    if(
-      state[0][0] === EMPTY
-    ){
-
-      if(state[1][1] === WHITE){
-        s -= 300;
-      }
-
-      if(state[1][1] === BLACK){
-        s += 300;
-      }
-    }
-
-    if(
-      state[0][7] === EMPTY
-    ){
-
-      if(state[1][6] === WHITE){
-        s -= 300;
-      }
-
-      if(state[1][6] === BLACK){
-        s += 300;
-      }
-    }
-
-    if(
-      state[7][0] === EMPTY
-    ){
-
-      if(state[6][1] === WHITE){
-        s -= 300;
-      }
-
-      if(state[6][1] === BLACK){
-        s += 300;
-      }
-    }
-
-    if(
-      state[7][7] === EMPTY
-    ){
-
-      if(state[6][6] === WHITE){
-        s -= 300;
-      }
-
-      if(state[6][6] === BLACK){
-        s += 300;
-      }
-    }
-
-    return s;
-  }
-
-  // =====================
-  // 評価盤
-  // =====================
-
-  function pstScore(state){
-
-    let s = 0;
-
-    for(let y=0;y<8;y++){
-      for(let x=0;x<8;x++){
-
-        const p = state[y][x];
-
-        if(p === WHITE){
-
-          s += PST[y][x];
-        }
-
-        if(p === BLACK){
-
-          s -= PST[y][x];
-        }
-      }
-    }
-
-    return s;
-  }
-
-  // =====================
-  // 石数
-  // =====================
-
-  function discScore(state){
-
-    let w = 0;
-    let b = 0;
-
-    for(let y=0;y<8;y++){
-      for(let x=0;x<8;x++){
-
-        if(state[y][x] === WHITE){
-          w++;
-        }
-
-        if(state[y][x] === BLACK){
-          b++;
-        }
-      }
-    }
-
-    return w - b;
-  }
-
-  // =====================
-  // 終局
-  // =====================
-
-  function gameOver(state){
-
-    return (
-      generateMoves(state,WHITE).length === 0 &&
-      generateMoves(state,BLACK).length === 0
-    );
-  }
-
-  // =====================
-  // 評価
-  // =====================
-
-  function evaluate(state){
-
-    if(gameOver(state)){
+    if(myMoves.length === 0 && enemyMoves.length === 0){
 
       const d = discScore(state);
 
@@ -475,86 +360,97 @@ function cpuMove3(board){
       return 0;
     }
 
-    const empties =
-      emptyCount(state);
+    const mobility =
+      mobilityFromMoves(myMoves,enemyMoves);
 
-    // 序盤
+    // opening
     if(empties > 40){
 
       return (
-        mobility(state) * 80 +
-        frontier(state) * 40 +
+        mobility * 90 +
+        frontierScore(state) * 25 +
         cornerScore(state) * 10 +
         pstScore(state) * 2 +
         dangerScore(state)
       );
     }
 
-    // 中盤
+    // middle
     if(empties > 14){
 
       return (
-        mobility(state) * 60 +
-        frontier(state) * 25 +
-        cornerScore(state) * 10 +
+        mobility * 70 +
+        cornerScore(state) * 12 +
         pstScore(state) * 4 +
-        discScore(state) * 2 +
+        discScore(state) +
         dangerScore(state)
       );
     }
 
-    // 終盤
-
+    // endgame
     return (
-      mobility(state) * 30 +
-      cornerScore(state) * 15 +
+      mobility * 25 +
+      cornerScore(state) * 20 +
       pstScore(state) * 2 +
-      discScore(state) * 100 +
+      discScore(state) * 120 +
       dangerScore(state)
     );
   }
 
   // =====================
-  // move ordering
+  // sort
   // =====================
 
-  function sortMoves(state,moves,player){
+  function sortMoves(moves,pvMove,depth){
 
-    moves.sort((a,b)=>{
+    if(pvMove){
 
-      let sa = 0;
-      let sb = 0;
+      for(let i=0;i<moves.length;i++){
 
-      sa += PST[a.y][a.x];
-      sb += PST[b.y][b.x];
+        const m = moves[i];
 
-      sa += a.flips.length * 3;
-      sb += b.flips.length * 3;
+        if(
+          m.x === pvMove.x &&
+          m.y === pvMove.y
+        ){
+
+          const tmp = moves[0];
+          moves[0] = moves[i];
+          moves[i] = tmp;
+
+          break;
+        }
+      }
+    }
+
+    for(let i=0;i<moves.length;i++){
+
+      const m = moves[i];
+
+      let score = m.score;
+
+      const killer = killerMoves[depth];
 
       if(
-        (a.x===0&&a.y===0)||
-        (a.x===0&&a.y===7)||
-        (a.x===7&&a.y===0)||
-        (a.x===7&&a.y===7)
+        killer &&
+        m.x === killer.x &&
+        m.y === killer.y
       ){
-        sa += 9999;
+        score += 5000;
       }
 
-      if(
-        (b.x===0&&b.y===0)||
-        (b.x===0&&b.y===7)||
-        (b.x===7&&b.y===0)||
-        (b.x===7&&b.y===7)
-      ){
-        sb += 9999;
-      }
+      score += history[m.y][m.x];
 
-      return sb - sa;
-    });
+      m.orderScore = score;
+    }
+
+    moves.sort(
+      (a,b)=>b.orderScore-a.orderScore
+    );
   }
 
   // =====================
-  // PVS Negamax
+  // negamax
   // =====================
 
   function negamax(
@@ -562,37 +458,60 @@ function cpuMove3(board){
     depth,
     alpha,
     beta,
-    player
+    player,
+    empties,
+    passed
   ){
+
+    const key =
+      hashBoard(state,player) + depth;
+
+    const tt = TT.get(key);
+
+    if(tt !== undefined){
+      return tt;
+    }
+
+    const moves =
+      generateMoves(state,player);
+
+    const enemyMoves =
+      generateMoves(state,opp(player));
 
     if(
       depth <= 0 ||
-      gameOver(state)
+      (moves.length===0 && enemyMoves.length===0)
     ){
-      return (
+
+      const val = (
         player === WHITE
-        ? evaluate(state)
-        : -evaluate(state)
+          ? evaluate(state,empties,moves,enemyMoves)
+          : -evaluate(state,empties,enemyMoves,moves)
       );
+
+      TT.set(key,val);
+
+      return val;
     }
-
-    let moves =
-      generateMoves(state,player);
-
-    // pass
 
     if(moves.length === 0){
 
+      if(passed){
+        return 0;
+      }
+
       return -negamax(
         state,
-        depth - 1,
+        depth,
         -beta,
         -alpha,
-        opp(player)
+        opp(player),
+        empties,
+        true
       );
     }
 
-    sortMoves(state,moves,player);
+    sortMoves(moves,null,depth);
 
     let first = true;
 
@@ -605,15 +524,16 @@ function cpuMove3(board){
       let score;
 
       // PVS
-
       if(first){
 
         score = -negamax(
           state,
-          depth - 1,
+          depth-1,
           -beta,
           -alpha,
-          opp(player)
+          opp(player),
+          empties-1,
+          false
         );
 
         first = false;
@@ -622,23 +542,24 @@ function cpuMove3(board){
 
         score = -negamax(
           state,
-          depth - 1,
-          -alpha - 1,
+          depth-1,
+          -alpha-1,
           -alpha,
-          opp(player)
+          opp(player),
+          empties-1,
+          false
         );
 
-        if(
-          alpha < score &&
-          score < beta
-        ){
+        if(alpha < score && score < beta){
 
           score = -negamax(
             state,
-            depth - 1,
+            depth-1,
             -beta,
             -score,
-            opp(player)
+            opp(player),
+            empties-1,
+            false
           );
         }
       }
@@ -646,37 +567,59 @@ function cpuMove3(board){
       undoMove(state,move,player);
 
       if(score > alpha){
-
         alpha = score;
       }
 
       if(alpha >= beta){
 
+        killerMoves[depth] = {
+          x: move.x,
+          y: move.y
+        };
+
+        history[move.y][move.x] +=
+          depth * depth;
+
         break;
       }
     }
+
+    TT.set(key,alpha);
 
     return alpha;
   }
 
   // =====================
-  // iterative deepening
+  // root
   // =====================
 
-  let bestMove = null;
+  let empties = 0;
+
+  for(let y=0;y<8;y++){
+    for(let x=0;x<8;x++){
+
+      if(board[y][x] === EMPTY){
+        empties++;
+      }
+    }
+  }
 
   let maxDepth = 8;
 
-  const empties =
-    emptyCount(board);
-
   if(empties <= 20){
-    maxDepth = 10;
+    maxDepth = 9;
   }
 
   if(empties <= 14){
-    maxDepth = 14;
+    maxDepth = 10;
   }
+
+  // safer full search
+  if(empties <= 8){
+    maxDepth = empties;
+  }
+
+  let bestMove = null;
 
   let rootMoves =
     generateMoves(board,WHITE);
@@ -685,15 +628,17 @@ function cpuMove3(board){
     return null;
   }
 
-  sortMoves(board,rootMoves,WHITE);
+  sortMoves(rootMoves,null,0);
 
-  for(
-    let depth = 2;
-    depth <= maxDepth;
-    depth++
-  ){
+  for(let depth=2;depth<=maxDepth;depth++){
 
     let bestScore = -INF;
+
+    sortMoves(
+      rootMoves,
+      bestMove,
+      depth
+    );
 
     for(let i=0;i<rootMoves.length;i++){
 
@@ -703,10 +648,12 @@ function cpuMove3(board){
 
       const score = -negamax(
         board,
-        depth - 1,
+        depth-1,
         -INF,
         INF,
-        BLACK
+        BLACK,
+        empties-1,
+        false
       );
 
       undoMove(board,move,WHITE);
