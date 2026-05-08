@@ -1,6 +1,7 @@
 // =====================
 // cpu3.js
 // Fast + Stable Reversi AI
+// 安全高速化版
 // =====================
 
 function cpuMove3(board){
@@ -112,9 +113,7 @@ function cpuMove3(board){
     for(let y=0;y<8;y++){
       for(let x=0;x<8;x++){
 
-        // 高速化:
-        // EMPTY以外は即skip
-
+        // 安全高速化
         if(state[y][x] !== EMPTY){
           continue;
         }
@@ -188,18 +187,6 @@ function cpuMove3(board){
     }
 
     return n;
-  }
-
-  // =====================
-  // mobility
-  // =====================
-
-  function mobility(state){
-
-    return (
-      generateMoves(state,WHITE).length -
-      generateMoves(state,BLACK).length
-    );
   }
 
   // =====================
@@ -382,13 +369,12 @@ function cpuMove3(board){
   // evaluate
   // =====================
 
-  function evaluate(state,empties){
-
-    const whiteMoves =
-      generateMoves(state,WHITE);
-
-    const blackMoves =
-      generateMoves(state,BLACK);
+  function evaluate(
+    state,
+    empties,
+    whiteMoves,
+    blackMoves
+  ){
 
     // 終局
 
@@ -405,8 +391,7 @@ function cpuMove3(board){
       return 0;
     }
 
-    // mobility
-    const mob =
+    const mobility =
       whiteMoves.length -
       blackMoves.length;
 
@@ -415,8 +400,12 @@ function cpuMove3(board){
     if(empties > 40){
 
       return (
-        mob * 80 +
+        mobility * 80 +
+
+        // 安全高速化:
+        // frontierは序盤のみ
         frontier(state) * 40 +
+
         cornerScore(state) * 10 +
         pstScore(state) * 2 +
         dangerScore(state)
@@ -428,8 +417,11 @@ function cpuMove3(board){
     if(empties > 14){
 
       return (
-        mob * 60 +
-        frontier(state) * 25 +
+        mobility * 60 +
+
+        // frontier削減
+        // 中盤は省略
+
         cornerScore(state) * 10 +
         pstScore(state) * 4 +
         discScore(state) * 2 +
@@ -440,7 +432,7 @@ function cpuMove3(board){
     // 終盤
 
     return (
-      mob * 30 +
+      mobility * 30 +
       cornerScore(state) * 15 +
       pstScore(state) * 2 +
       discScore(state) * 100 +
@@ -452,40 +444,33 @@ function cpuMove3(board){
   // ordering
   // =====================
 
+  function moveScore(move){
+
+    let s = 0;
+
+    s += PST[move.y][move.x];
+
+    s += move.flips.length * 3;
+
+    // corner
+
+    if(
+      (move.x===0&&move.y===0)||
+      (move.x===0&&move.y===7)||
+      (move.x===7&&move.y===0)||
+      (move.x===7&&move.y===7)
+    ){
+      s += 9999;
+    }
+
+    return s;
+  }
+
   function sortMoves(moves){
 
     moves.sort((a,b)=>{
 
-      let sa = 0;
-      let sb = 0;
-
-      sa += PST[a.y][a.x];
-      sb += PST[b.y][b.x];
-
-      sa += a.flips.length * 3;
-      sb += b.flips.length * 3;
-
-      // corner bonus
-
-      if(
-        (a.x===0&&a.y===0)||
-        (a.x===0&&a.y===7)||
-        (a.x===7&&a.y===0)||
-        (a.x===7&&a.y===7)
-      ){
-        sa += 9999;
-      }
-
-      if(
-        (b.x===0&&b.y===0)||
-        (b.x===0&&b.y===7)||
-        (b.x===7&&b.y===0)||
-        (b.x===7&&b.y===7)
-      ){
-        sb += 9999;
-      }
-
-      return sb - sa;
+      return moveScore(b) - moveScore(a);
     });
   }
 
@@ -502,35 +487,42 @@ function cpuMove3(board){
     empties
   ){
 
-    if(depth <= 0){
+    const moves =
+      generateMoves(state,player);
+
+    const enemyMoves =
+      generateMoves(state,opp(player));
+
+    // terminal
+
+    if(
+      depth <= 0 ||
+      (
+        moves.length === 0 &&
+        enemyMoves.length === 0
+      )
+    ){
 
       return (
         player === WHITE
-        ? evaluate(state,empties)
-        : -evaluate(state,empties)
+        ? evaluate(
+            state,
+            empties,
+            moves,
+            enemyMoves
+          )
+        : -evaluate(
+            state,
+            empties,
+            enemyMoves,
+            moves
+          )
       );
     }
-
-    let moves =
-      generateMoves(state,player);
 
     // pass
 
     if(moves.length === 0){
-
-      const enemyMoves =
-        generateMoves(state,opp(player));
-
-      // game over
-
-      if(enemyMoves.length === 0){
-
-        return (
-          player === WHITE
-          ? evaluate(state,empties)
-          : -evaluate(state,empties)
-        );
-      }
 
       return -negamax(
         state,
@@ -603,7 +595,7 @@ function cpuMove3(board){
         alpha = score;
       }
 
-      // alpha beta cut
+      // cut
 
       if(alpha >= beta){
 
@@ -623,19 +615,19 @@ function cpuMove3(board){
 
   let maxDepth = 8;
 
-  // 安定高速化
+  // 安全高速化
 
   if(empties <= 20){
     maxDepth = 9;
   }
 
-  // 終盤少し強化
+  // 終盤強化
 
   if(empties <= 14){
     maxDepth = 11;
   }
 
-  // 完全読み暴走防止
+  // 暴走防止
 
   if(empties <= 10){
     maxDepth = 12;
@@ -662,6 +654,32 @@ function cpuMove3(board){
 
     let bestScore = -INF;
 
+    // 安全高速化:
+    // 毎回full sortせず
+    // bestMoveだけ先頭
+
+    if(bestMove){
+
+      rootMoves.sort((a,b)=>{
+
+        if(
+          a.x === bestMove.x &&
+          a.y === bestMove.y
+        ){
+          return -1;
+        }
+
+        if(
+          b.x === bestMove.x &&
+          b.y === bestMove.y
+        ){
+          return 1;
+        }
+
+        return 0;
+      });
+    }
+
     for(let i=0;i<rootMoves.length;i++){
 
       const move = rootMoves[i];
@@ -685,31 +703,6 @@ function cpuMove3(board){
 
         bestMove = move;
       }
-    }
-
-    // PV ordering
-    // strongest move first next iteration
-
-    if(bestMove){
-
-      rootMoves.sort((a,b)=>{
-
-        if(
-          a.x === bestMove.x &&
-          a.y === bestMove.y
-        ){
-          return -1;
-        }
-
-        if(
-          b.x === bestMove.x &&
-          b.y === bestMove.y
-        ){
-          return 1;
-        }
-
-        return 0;
-      });
     }
   }
 
