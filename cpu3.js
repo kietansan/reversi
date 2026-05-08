@@ -1,6 +1,6 @@
 // =====================
 // cpu3.js
-// High Strength Reversi AI
+// Safe Optimized Version
 // =====================
 
 function cpuMove3(board){
@@ -18,7 +18,7 @@ function cpuMove3(board){
   ];
 
   // =====================
-  // 評価盤
+  // PST
   // =====================
 
   const PST = [
@@ -35,7 +35,7 @@ function cpuMove3(board){
   ];
 
   // =====================
-  // 範囲
+  // utility
   // =====================
 
   function inRange(x,y){
@@ -48,10 +48,6 @@ function cpuMove3(board){
     );
   }
 
-  // =====================
-  // 相手
-  // =====================
-
   function opp(p){
 
     return p === BLACK
@@ -60,7 +56,7 @@ function cpuMove3(board){
   }
 
   // =====================
-  // 反転取得
+  // flips
   // =====================
 
   function getFlips(state,x,y,player){
@@ -100,7 +96,6 @@ function cpuMove3(board){
         state[ny][nx] === player
       ){
 
-        // concat削除版
         for(let j=0;j<line.length;j++){
           flips.push(line[j]);
         }
@@ -113,7 +108,7 @@ function cpuMove3(board){
   }
 
   // =====================
-  // 合法手
+  // generate
   // =====================
 
   function generateMoves(state,player){
@@ -123,7 +118,6 @@ function cpuMove3(board){
     for(let y=0;y<8;y++){
       for(let x=0;x<8;x++){
 
-        // EMPTY先判定
         if(state[y][x] !== EMPTY){
           continue;
         }
@@ -146,7 +140,29 @@ function cpuMove3(board){
   }
 
   // =====================
-  // 着手
+  // hasMove
+  // =====================
+
+  function hasMove(state,player){
+
+    for(let y=0;y<8;y++){
+      for(let x=0;x<8;x++){
+
+        if(state[y][x] !== EMPTY){
+          continue;
+        }
+
+        if(getFlips(state,x,y,player)){
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  // =====================
+  // move
   // =====================
 
   function doMove(state,move,player){
@@ -164,7 +180,7 @@ function cpuMove3(board){
   }
 
   // =====================
-  // Undo
+  // undo
   // =====================
 
   function undoMove(state,move,player){
@@ -184,7 +200,7 @@ function cpuMove3(board){
   }
 
   // =====================
-  // 空き数
+  // empty count
   // =====================
 
   function emptyCount(state){
@@ -261,7 +277,7 @@ function cpuMove3(board){
   }
 
   // =====================
-  // 角
+  // corner
   // =====================
 
   function cornerScore(state){
@@ -294,7 +310,7 @@ function cpuMove3(board){
   }
 
   // =====================
-  // X/C penalty
+  // danger
   // =====================
 
   function dangerScore(state){
@@ -349,7 +365,7 @@ function cpuMove3(board){
   }
 
   // =====================
-  // 評価盤
+  // pst
   // =====================
 
   function pstScore(state){
@@ -377,7 +393,7 @@ function cpuMove3(board){
   }
 
   // =====================
-  // 石数
+  // disc
   // =====================
 
   function discScore(state){
@@ -402,19 +418,19 @@ function cpuMove3(board){
   }
 
   // =====================
-  // 終局
+  // game over
   // =====================
 
   function gameOver(state){
 
     return (
-      generateMoves(state,WHITE).length === 0 &&
-      generateMoves(state,BLACK).length === 0
+      !hasMove(state,WHITE) &&
+      !hasMove(state,BLACK)
     );
   }
 
   // =====================
-  // 評価
+  // evaluate
   // =====================
 
   function evaluate(state){
@@ -432,7 +448,8 @@ function cpuMove3(board){
     const empties =
       emptyCount(state);
 
-    // 序盤
+    // opening
+
     if(empties > 40){
 
       return (
@@ -444,7 +461,8 @@ function cpuMove3(board){
       );
     }
 
-    // 中盤
+    // middle
+
     if(empties > 14){
 
       return (
@@ -457,7 +475,7 @@ function cpuMove3(board){
       );
     }
 
-    // 終盤
+    // end
 
     return (
       mobility(state) * 30 +
@@ -469,10 +487,30 @@ function cpuMove3(board){
   }
 
   // =====================
-  // move ordering
+  // ordering
   // =====================
 
-  function sortMoves(state,moves,player){
+  function sortMoves(state,moves,player,pvMove){
+
+    if(pvMove){
+
+      for(let i=0;i<moves.length;i++){
+
+        const m = moves[i];
+
+        if(
+          m.x === pvMove.x &&
+          m.y === pvMove.y
+        ){
+
+          const tmp = moves[0];
+          moves[0] = moves[i];
+          moves[i] = tmp;
+
+          break;
+        }
+      }
+    }
 
     moves.sort((a,b)=>{
 
@@ -508,7 +546,7 @@ function cpuMove3(board){
   }
 
   // =====================
-  // PVS Negamax
+  // negamax
   // =====================
 
   function negamax(
@@ -534,7 +572,6 @@ function cpuMove3(board){
       generateMoves(state,player);
 
     // pass
-    // depthを減らさない版
 
     if(moves.length === 0){
 
@@ -547,7 +584,7 @@ function cpuMove3(board){
       );
     }
 
-    sortMoves(state,moves,player);
+    sortMoves(state,moves,player,null);
 
     let first = true;
 
@@ -629,7 +666,6 @@ function cpuMove3(board){
     maxDepth = 10;
   }
 
-  // 安定化
   if(empties <= 14){
     maxDepth = 12;
   }
@@ -641,7 +677,12 @@ function cpuMove3(board){
     return null;
   }
 
-  sortMoves(board,rootMoves,WHITE);
+  sortMoves(
+    board,
+    rootMoves,
+    WHITE,
+    null
+  );
 
   for(
     let depth = 2;
@@ -651,21 +692,12 @@ function cpuMove3(board){
 
     let bestScore = -INF;
 
-    // PV ordering
-    if(bestMove){
-
-      const idx = rootMoves.findIndex(m =>
-        m.x === bestMove.x &&
-        m.y === bestMove.y
-      );
-
-      if(idx > 0){
-
-        const tmp = rootMoves[0];
-        rootMoves[0] = rootMoves[idx];
-        rootMoves[idx] = tmp;
-      }
-    }
+    sortMoves(
+      board,
+      rootMoves,
+      WHITE,
+      bestMove
+    );
 
     for(let i=0;i<rootMoves.length;i++){
 
