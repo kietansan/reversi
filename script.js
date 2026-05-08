@@ -16,18 +16,7 @@ let animating = false;
 let gameStarted = false;
 
 let board;
-initBoard();
-
 let current = 1;
-
-// =====================
-// 方向
-// =====================
-const dirs = [
-  [-1,-1],[-1,0],[-1,1],
-  [0,-1],        [0,1],
-  [1,-1],[1,0],[1,1]
-];
 
 // =====================
 // 初期化
@@ -43,6 +32,17 @@ function initBoard(){
   board[4][4] = 2;
 }
 
+initBoard();
+
+// =====================
+// 方向
+// =====================
+const dirs = [
+  [-1,-1],[-1,0],[-1,1],
+  [0,-1],        [0,1],
+  [1,-1],[1,0],[1,1]
+];
+
 // =====================
 // 範囲
 // =====================
@@ -51,7 +51,7 @@ function inRange(x,y){
 }
 
 // =====================
-// 反転取得
+// 反転
 // =====================
 function getFlips(x,y,player){
 
@@ -110,12 +110,51 @@ function countPieces(){
 }
 
 // =====================
+// 描画
+// =====================
+function draw(){
+
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  for(let i=0;i<=SIZE;i++){
+    const pos = PADDING + i * CELL;
+
+    ctx.beginPath();
+    ctx.moveTo(pos,PADDING);
+    ctx.lineTo(pos,PADDING + BOARD_SIZE);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(PADDING,pos);
+    ctx.lineTo(PADDING + BOARD_SIZE,pos);
+    ctx.stroke();
+  }
+
+  const stars = [[2,2],[2,6],[6,2],[6,6]];
+  ctx.fillStyle = "black";
+
+  for(const [x,y] of stars){
+    ctx.beginPath();
+    ctx.arc(PADDING + x*CELL, PADDING + y*CELL, 4, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  for(let y=0;y<SIZE;y++){
+    for(let x=0;x<SIZE;x++){
+      if(board[y][x] !== 0){
+        drawPiece(x,y,board[y][x]);
+      }
+    }
+  }
+}
+
+// =====================
 // 駒描画
 // =====================
 function drawPiece(x,y,color,scale=1){
 
-  const cx = PADDING + x * CELL + CELL/2;
-  const cy = PADDING + y * CELL + CELL/2;
+  const cx = PADDING + x*CELL + CELL/2;
+  const cy = PADDING + y*CELL + CELL/2;
   const r = CELL * 0.38 * scale;
 
   ctx.beginPath();
@@ -145,48 +184,7 @@ function drawPiece(x,y,color,scale=1){
 }
 
 // =====================
-// 描画
-// =====================
-function draw(){
-
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-
-  for(let i=0;i<=SIZE;i++){
-
-    const pos = PADDING + i * CELL;
-
-    ctx.beginPath();
-    ctx.moveTo(pos,PADDING);
-    ctx.lineTo(pos,PADDING + BOARD_SIZE);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(PADDING,pos);
-    ctx.lineTo(PADDING + BOARD_SIZE,pos);
-    ctx.stroke();
-  }
-
-  const stars = [[2,2],[2,6],[6,2],[6,6]];
-
-  ctx.fillStyle = "black";
-
-  for(const [x,y] of stars){
-    ctx.beginPath();
-    ctx.arc(PADDING + x*CELL, PADDING + y*CELL, 4, 0, Math.PI*2);
-    ctx.fill();
-  }
-
-  for(let y=0;y<SIZE;y++){
-    for(let x=0;x<SIZE;x++){
-      if(board[y][x] !== 0){
-        drawPiece(x,y,board[y][x]);
-      }
-    }
-  }
-}
-
-// =====================
-// 表示
+// 表示更新
 // =====================
 function updateInfo(){
 
@@ -208,7 +206,7 @@ function updateInfo(){
 }
 
 // =====================
-// 着手（重要：ここが司令塔）
+// 最重要：安全に着手
 // =====================
 function applyMove(x,y,player){
 
@@ -216,6 +214,9 @@ function applyMove(x,y,player){
   if(flips.length === 0) return;
 
   board[y][x] = player;
+
+  // ★必ず即描画（これが超重要）
+  draw();
 
   if(!gameStarted){
     gameStarted = true;
@@ -253,6 +254,47 @@ function applyMove(x,y,player){
 }
 
 // =====================
+// アニメ
+// =====================
+function animateFlip(flips,newColor,callback){
+
+  let frame = 0;
+  animating = true;
+
+  function loop(){
+
+    frame++;
+
+    const s =
+      frame < 6
+      ? 1 - frame * 0.12
+      : 0.3 + (frame - 6) * 0.12;
+
+    draw();
+
+    for(const [x,y] of flips){
+      drawPiece(x,y,newColor,s);
+    }
+
+    if(frame < 12){
+      requestAnimationFrame(loop);
+    }else{
+
+      for(const [x,y] of flips){
+        board[y][x] = newColor;
+      }
+
+      animating = false;
+      draw(); // ★最終確定描画
+
+      if(callback) callback();
+    }
+  }
+
+  loop();
+}
+
+// =====================
 // CPU
 // =====================
 function cpuTurn(){
@@ -283,7 +325,7 @@ function cpuTurn(){
 }
 
 // =====================
-// クリック（重要：絶対にapplyMove）
+// クリック（絶対安定版）
 // =====================
 canvas.addEventListener("click",(e)=>{
 
@@ -292,11 +334,8 @@ canvas.addEventListener("click",(e)=>{
 
   const rect = canvas.getBoundingClientRect();
 
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
-
-  const mx = (e.clientX - rect.left) * scaleX - PADDING;
-  const my = (e.clientY - rect.top) * scaleY - PADDING;
+  const mx = (e.clientX - rect.left) * (canvas.width / rect.width) - PADDING;
+  const my = (e.clientY - rect.top) * (canvas.height / rect.height) - PADDING;
 
   const x = Math.floor(mx / CELL);
   const y = Math.floor(my / CELL);
@@ -324,8 +363,6 @@ restartBtn.addEventListener("click",()=>{
   updateInfo();
 });
 
-// =====================
-// 初期描画
 // =====================
 draw();
 updateInfo();
